@@ -27,22 +27,19 @@ class Form extends React.Component {
     super(props);
     this.state = {
       done: false,
+      timestamp: new Date().getTime(),
     };
   }
 
   // Update local state with a user's answer.
-  // Send timestamp and ID to server as soon as ID is entered.
   handleInput = (input, key) => {
     this.state[key] = input;
-    if (key === 'userid') {
-      request.get(`/timestamp/${input}`);
-    }
   }
 
   // Show thank you message and send data to server.
   handleDone = () => {
     this.setState({ done: true });
-    request.post('/done').send(JSON.stringify(this.state));
+    request.post('/done').send(this.state).then(console.log);
   }
 
   // Render a a given question.
@@ -60,12 +57,7 @@ class Form extends React.Component {
 
   render() {
     if (this.state.done) {
-      return (
-        <div>
-          <div>THANK YOU!</div>
-          <div>If you made a mistake you can reload the page and try again.</div>
-        </div>
-      );
+      return <div>THANK YOU!</div>;
     }
     return (
       <div className="form">
@@ -86,10 +78,11 @@ class Form extends React.Component {
           lift={seat => this.handleInput(seat, 'loc')}
         />
         <Auditorium
-          question="Disregarding social factors, where would be your preffered seat?"
+          question="Disregarding where others are, where is your preferred seat?"
           seats={SEATS}
           lift={seat => this.handleInput(seat, 'pref')}
         />
+        <div>Please ensure answers are correct :)</div>
         <div style={buttonContainerStyle}>
           <button style={buttonStyle} onClick={this.handleDone}>SEND</button>
         </div>

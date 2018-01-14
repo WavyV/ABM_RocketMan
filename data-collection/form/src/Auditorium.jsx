@@ -109,6 +109,7 @@ class Auditorium extends React.Component {
     return (
       <div>
         <div>{this.props.question}</div>
+        <div>Answer by clicking on a seat (light blue color).</div>
         <div style={auditoriumStyle}>
           <div style={infoTextStyle}>BACK WALL</div>
           {rows}

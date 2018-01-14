@@ -1,4 +1,5 @@
 dist/
 node_modules/
 .jsbeautifyrc
+form.json
 README.tex
