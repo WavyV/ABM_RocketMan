@@ -3,6 +3,14 @@
 from classroom_seating import *
 import matplotlib.pyplot as plt
 import networkx as nx
+from matplotlib import animation
+
+"""
+Run simulations of the ClassroomModel and visualize the seating process
+
+Usage: python3 run_classroom_seating.py
+"""
+
 
 """
 Determine the seating distribution of a given model instance
@@ -15,7 +23,7 @@ Returns:
                     - 0 represents aisles
                     - 1 represents available seats
                     - 2 represents occupied seats
-                    - 2 represents entrances
+                    - -1 represents entrances
 """
 def get_seating_distribution(model):
     seating_distr = np.zeros((model.grid.width, model.grid.height))
@@ -28,7 +36,7 @@ def get_seating_distribution(model):
                 seating_distr[x,y] = 2
 
     for pos in model.classroom.entrances:
-        seating_distr[pos[0],pos[1]] = -2
+        seating_distr[pos[0],pos[1]] = -1
 
     return seating_distr
 
@@ -40,95 +48,87 @@ Args:
 
 Returns:
     blocking: 2D array representing the classroom.
-                    - 0 represents aisles
-                    - 2 represents occupied seats
+                    - 3 represents aisles
+                    - 5 represents occupied seats
                     - negative values represent the "stand-up-cost"
                     (the more students block the way between aisle and seat, the smaller the value)
+                    - the smallest negative value represents the entrances
 """
 def get_seat_blocking(model):
-    blocking = np.zeros((model.grid.width, model.grid.height))
+    blocking = 3*np.ones((model.grid.width, model.grid.height))
     for cell in model.grid.coord_iter():
         content, x, y = cell
         for agent in content:
             if type(agent) is Seat and not agent.occupied:
                 blocking[x,y] = -agent.get_stand_up_cost()
             else:
-                blocking[x,y] = 2
+                blocking[x,y] = 5
+
+    for pos in model.classroom.entrances:
+        blocking[pos[0],pos[1]] = -max(blocks)
 
     return blocking
 
 
 """
-Run the model
+Set the parameters
 """
 seed = 0
-
-plot_all_steps = False
 num_iterations = 200
-max_num_agents = 400
-width = 30
-height = 20
 
-cliques = 100
+# The classroom layout
+blocks = [0, 10, 20, 10]
+num_rows = 20
+
+# The social network of Students
+cliques = 75
+clique_size = 4
+max_num_agents = cliques * clique_size
 prob_linked_cliques = 0.3
-social_network = nx.to_numpy_matrix(nx.relaxed_caveman_graph(cliques, int(max_num_agents/cliques), prob_linked_cliques, seed))
+social_network = nx.to_numpy_matrix(nx.relaxed_caveman_graph(cliques, clique_size, prob_linked_cliques, seed))
 
-model_random = ClassroomModel(max_num_agents, height, width, seed, False)
-model_sociability = ClassroomModel(max_num_agents, height, width, seed, True)
-model_friendship = ClassroomModel(max_num_agents, height, width, seed, True, social_network)
 
-for i in range(num_iterations):
+"""
+Initialize the models
+"""
+model_random = ClassroomModel(max_num_agents, num_rows, blocks, seed, False, False)
+model_sociability = ClassroomModel(max_num_agents, num_rows, blocks, seed, True, False)
+model_friendship = ClassroomModel(max_num_agents, num_rows, blocks, seed, True, False, social_network)
 
+models = [model_random, model_sociability, model_friendship]
+model_names = ["blocking", "blocking + sociability", "blocking + sociability + friendship"]
+
+
+"""
+Initialize the plots
+"""
+fig, axs = plt.subplots(1, len(models), figsize=(5*len(models),5))
+min_value = -max(blocks)
+max_value = 5
+
+images = []
+
+for i, ax in enumerate(fig.axes):
+
+    model_state = get_seat_blocking(models[i]).T
+    images.append(ax.imshow(model_state, vmin=min_value, vmax=max_value, interpolation=None))
+    ax.axis("off")
+    ax.set_title(model_names[i])
+
+
+"""
+Run and visualize the models
+"""
+def animate(i):
     # advance all models
-    model_random.step()
-    model_sociability.step()
-    model_friendship.step()
+    for i in range(len(models)):
+        models[i].step()
+        model_state = get_seat_blocking(models[i]).T
+        images[i].set_data(model_state)
 
-    # visualization
-    if plot_all_steps or i == num_iterations-1:
+    return tuple(images)
 
-        distr_random = get_seating_distribution(model_random).T
-        blocking_random = get_seat_blocking(model_random).T
+anim = animation.FuncAnimation(fig, animate, frames=num_iterations, interval=500, repeat=False)
 
-        distr_sociability = get_seating_distribution(model_sociability).T
-        blocking_sociability = get_seat_blocking(model_sociability).T
-
-        distr_friendship = get_seating_distribution(model_friendship).T
-        blocking_friendship = get_seat_blocking(model_friendship).T
-
-        min_value = np.min([blocking_random,blocking_sociability,blocking_friendship])
-        max_value = np.max([blocking_random,blocking_sociability,blocking_friendship])
-
-        fig = plt.figure()
-        ax1 = fig.add_subplot(2,3,1)
-        ax1.axis('off')
-        ax1.imshow(distr_random, vmin=min_value, vmax=max_value, interpolation=None)
-        ax1.set_title("random")
-        #ax1.set_ylabel("final seating distribution", rotation=0, size='large')
-
-        ax2 = fig.add_subplot(2,3,4)
-        ax2.axis('off')
-        ax2.imshow(blocking_random, vmin=min_value, vmax=max_value, interpolation=None)
-        #ax2.set_ylabel("row blocking", rotation=0, size='large')
-
-        ax3 = fig.add_subplot(2,3,2)
-        ax3.axis('off')
-        ax3.imshow(distr_sociability, vmin=min_value, vmax=max_value, interpolation=None)
-        ax3.set_title("sociability")
-
-        ax4 = fig.add_subplot(2,3,5)
-        ax4.axis('off')
-        ax4.imshow(blocking_sociability, vmin=min_value, vmax=max_value, interpolation=None)
-
-        ax5 = fig.add_subplot(2,3,3)
-        ax5.axis('off')
-        ax5.imshow(distr_friendship, vmin=min_value, vmax=max_value, interpolation=None)
-        ax5.set_title("friendship")
-
-        ax6 = fig.add_subplot(2,3,6)
-        ax6.axis('off')
-        ax6.imshow(blocking_friendship, vmin=min_value, vmax=max_value, interpolation=None)
-
-        fig.tight_layout()
-
-        plt.show()
+fig.tight_layout()
+plt.show()
