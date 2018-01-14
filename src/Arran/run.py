@@ -22,9 +22,10 @@ import matplotlib.pyplot as plt
 # run_data = batch_run.get_model_vars_dataframe()
 # plt.scatter()
 
-model = TheaterModel()
+model = TheaterModel(blocks=[8, 8, 8], sparsity=0.0)
 
 for i in range(288):
     model.step()
 
 model.print_theater()
+print(len(model.seated_students))
