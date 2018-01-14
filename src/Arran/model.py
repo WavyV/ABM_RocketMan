@@ -14,7 +14,7 @@ class TheaterModel(Model):
 
     def __init__(self, students = 100,
                  num_of_rows=12,
-                 blocks=[12, 12],
+                 blocks=[8, 8, 8],
                  doors=[0],
                  sparsity=0.1):
 
@@ -44,6 +44,10 @@ class TheaterModel(Model):
         # height include space for doors
         # self.grid = MultiGrid(sum(rows) + self.paths, num_of_rows + 2, False)
         self.grid = MultiGrid(sum(blocks), num_of_rows, False)
+        self.plan = np.zeros([num_of_rows, sum(blocks) + self.paths])
+
+        for b in (np.cumsum(blocks) + np.arange(len(blocks)))[:-1]:
+            self.plan[:, b] = -1
 
         self.schedule = RandomActivation(self)
         self.running = True
@@ -73,7 +77,16 @@ class TheaterModel(Model):
         else:
             return
 
-        self.print_theater()
+        # update the theater plan for plotting
+        offset = 0
+        for col in range(self.plan.shape[1]):
+            if col in np.cumsum(self.blocks)+np.arange(len(self.blocks)):
+                offset += 1
+                continue
+
+            self.plan[:, col] = self.theater[:, col - offset]
+
+        # self.print_theater()
 
     def fill_graph(self, sparsity):
         '''
