@@ -16,7 +16,7 @@ class Student(Agent):
         unique_id: student identifier
         model: the associated ClassroomModel
     """
-    def __init__(self, unique_id, model):
+    def __init__(self, unique_id, model, use_sociability):
 
         super().__init__(unique_id, model)
 
@@ -24,8 +24,10 @@ class Student(Agent):
         self.will_to_change_seat = False
         self.random_seat_choice = False
 
-        self.sociability = random.choice([-1,0,1])
-        #self.sociability = 0
+        if use_sociability:
+            self.sociability = random.choice([-1,0,1])
+        else:
+            self.sociability = 0
 
     """
     The seat selection procedure
@@ -70,6 +72,8 @@ class Student(Agent):
         # only choose another seat if not seated yet or
         # if the student has the characteristic to change its seat again
         if not self.seated or self.will_to_change_seat:
+
+            # TODO: if will_to_change_seat: include cost to get away from the current seat
 
             # make old seat available again
             content = self.model.grid.get_cell_list_contents(self.pos)
@@ -209,10 +213,12 @@ class ClassroomModel(Model):
         height, width: dimensions of the classroom
         social_network: the underlying social network as a connectivity matrix (1 means friendship, 0 means indifference)
     """
-    def __init__(self, N, height, width, social_network=None):
+    def __init__(self, N, height, width, seed, use_sociability, social_network=None):
         self.max_num_agents = N
         self.grid = MultiGrid(width, height, False)
         self.classroom = ClassroomDesign(width, height)
+        random.seed(seed)
+        self.use_sociability = use_sociability
         self.schedule = RandomActivation(self)
 
         self.interaction_matrix = np.array([[0.25, 0.5, 0.25], [1, 0, 1], [0.25, 0.5, 0.25]]).T
@@ -240,7 +246,7 @@ class ClassroomModel(Model):
         # as long as the max number of students is not reached, add a new one
         n = self.schedule.get_agent_count()
         if n < self.max_num_agents:
-            student = Student(n, self)
+            student = Student(n, self, self.use_sociability)
             self.schedule.add(student)
 
             # place new student randomly at one of the entrances

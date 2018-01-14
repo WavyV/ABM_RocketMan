@@ -2,6 +2,7 @@
 
 from classroom_seating import *
 import matplotlib.pyplot as plt
+import networkx as nx
 
 """
 Determine the seating distribution of a given model instance
@@ -42,7 +43,7 @@ Returns:
                     - 0 represents aisles
                     - 2 represents occupied seats
                     - negative values represent the "stand-up-cost"
-                    (the more students block the way between aisle and seat, the smaller the value)        
+                    (the more students block the way between aisle and seat, the smaller the value)
 """
 def get_seat_blocking(model):
     blocking = np.zeros((model.grid.width, model.grid.height))
@@ -60,27 +61,74 @@ def get_seat_blocking(model):
 """
 Run the model
 """
+seed = 0
+
 plot_all_steps = False
-num_iterations = 150
-max_num_agents = 200
+num_iterations = 200
+max_num_agents = 400
 width = 30
 height = 20
 
-model = ClassroomModel(max_num_agents, height, width)
+cliques = 100
+prob_linked_cliques = 0.3
+social_network = nx.to_numpy_matrix(nx.relaxed_caveman_graph(cliques, int(max_num_agents/cliques), prob_linked_cliques, seed))
+
+model_random = ClassroomModel(max_num_agents, height, width, seed, False)
+model_sociability = ClassroomModel(max_num_agents, height, width, seed, True)
+model_friendship = ClassroomModel(max_num_agents, height, width, seed, True, social_network)
 
 for i in range(num_iterations):
-    model.step()
+
+    # advance all models
+    model_random.step()
+    model_sociability.step()
+    model_friendship.step()
 
     # visualization
     if plot_all_steps or i == num_iterations-1:
 
-        distr = get_seating_distribution(model).T
-        blocking = get_seat_blocking(model).T
+        distr_random = get_seating_distribution(model_random).T
+        blocking_random = get_seat_blocking(model_random).T
 
-        plt.subplot(211)
-        plt.imshow(distr, vmin=np.min(blocking), vmax=np.max(blocking), interpolation=None)
+        distr_sociability = get_seating_distribution(model_sociability).T
+        blocking_sociability = get_seat_blocking(model_sociability).T
 
-        plt.subplot(212)
-        plt.imshow(blocking, vmin=np.min(blocking), vmax=np.max(blocking), interpolation=None)
+        distr_friendship = get_seating_distribution(model_friendship).T
+        blocking_friendship = get_seat_blocking(model_friendship).T
+
+        min_value = np.min([blocking_random,blocking_sociability,blocking_friendship])
+        max_value = np.max([blocking_random,blocking_sociability,blocking_friendship])
+
+        fig = plt.figure()
+        ax1 = fig.add_subplot(2,3,1)
+        ax1.axis('off')
+        ax1.imshow(distr_random, vmin=min_value, vmax=max_value, interpolation=None)
+        ax1.set_title("random")
+        #ax1.set_ylabel("final seating distribution", rotation=0, size='large')
+
+        ax2 = fig.add_subplot(2,3,4)
+        ax2.axis('off')
+        ax2.imshow(blocking_random, vmin=min_value, vmax=max_value, interpolation=None)
+        #ax2.set_ylabel("row blocking", rotation=0, size='large')
+
+        ax3 = fig.add_subplot(2,3,2)
+        ax3.axis('off')
+        ax3.imshow(distr_sociability, vmin=min_value, vmax=max_value, interpolation=None)
+        ax3.set_title("sociability")
+
+        ax4 = fig.add_subplot(2,3,5)
+        ax4.axis('off')
+        ax4.imshow(blocking_sociability, vmin=min_value, vmax=max_value, interpolation=None)
+
+        ax5 = fig.add_subplot(2,3,3)
+        ax5.axis('off')
+        ax5.imshow(distr_friendship, vmin=min_value, vmax=max_value, interpolation=None)
+        ax5.set_title("friendship")
+
+        ax6 = fig.add_subplot(2,3,6)
+        ax6.axis('off')
+        ax6.imshow(blocking_friendship, vmin=min_value, vmax=max_value, interpolation=None)
+
+        fig.tight_layout()
 
         plt.show()
