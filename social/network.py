@@ -2,13 +2,22 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
 
-# create graph
-G = nx.random_partition_graph([10,10,10], 0.25, 0.01)
+""" args
+groups: list of groups
+inner: percentage of edges within groups
+outer: percentage of edges between groups
+"""
 
-# plot graph
-nx.draw_networkx(G)
-plt.show()
+def social_graph(groups, inner, outer, plot):
+    # create graph
+    G = nx.random_partition_graph(groups, inner, outer)
 
-# print numpy array of social graph
-# ones means edge between nodes, otherwise zero
-print(nx.to_numpy_matrix(G))
+    # plot graph
+    if plot == True:
+        nx.draw_networkx(G)
+        plt.show()
+
+    # print numpy array of social graph
+    # ones means edge between nodes, otherwise zero
+    c = nx.to_numpy_matrix(G)
+    return c
