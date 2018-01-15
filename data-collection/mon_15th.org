@@ -32,4 +32,4 @@ Can contact Rob Bellerman about collecting data for Bachelor students. Perhaps
 ask for three sessions in the same room, different students per session. We
 should ask for 9 o'clock lectures.
 
-Ensure all data is collected.
+TODO: Ensure *all* data is collected.
