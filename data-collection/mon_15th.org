@@ -1,0 +1,35 @@
+* Questions
+
+When you sat in your seat initially, how many people did you have to pass in
+your row to get to the seat? (Enter a number)
+
+Of the students attending this course how many people do you consider friends?
+(Enter a number)
+
+If someone is sitting directly to your left, how well do you know them?
+(Discrete scale 1-5)
+
+If someone is sitting directly to your right, how well do you know them?
+(Discrete scale 1-5)
+
+On entering a lecture room how important is it to you to sit next to someone you
+consider a friend? (Discrete scale of 1-5)
+
+Consider entering a lecture room where you don't know anyone, how important to
+you is it to sit next to another person? (Discrete scale of 1-5)
+
+Estimate the ratio of importance to you of sitting next to a friend versus
+sitting in your preferred seat? (On a slider showing percentage)
+
+Where are you sitting right now? (Select a seat on graphic)
+
+Where would you sit in this lecture room, black seats are already taken? (Select
+a seat on graphic).
+
+* Notes
+
+Can contact Rob Bellerman about collecting data for Bachelor students. Perhaps
+ask for three sessions in the same room, different students per session. We
+should ask for 9 o'clock lectures.
+
+Ensure all data is collected.

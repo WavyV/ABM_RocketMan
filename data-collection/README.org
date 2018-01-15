@@ -34,29 +34,31 @@ row. We use the phrasing "when you sit down" as opposed to the phrasing "as soon
 as you sit down" as the latter might make the student suspicious as to the
 nature of the questionnaire and could influence their process. Each paper has a
 unique ID printed on it which we enter into a running Python program as we hand
-the paper to the student, this program logs the students entrance time.
+the paper to the student, this logs the students entrance time.
 
 Example of a slip of paper handed to a student:
 
 | Please fill out form at URL when you sit down. |
 | No personally identifiable info is collected.  |
-| https://ourform.com/abmform       Your ID: 5   |
+| goo.gl/abmform                      Your ID: 5 |
 
 When a student visits the URL they enter their unique ID, then they proceed to
-answer the remaining questions in the questionnaire. This may include their seat
-row and column, or how well they know their neighbours. Once they have reached
-the end of the form, and we believe the form should be short, they hit done.
+answer the remaining questions in the questionnaire. This may include where
+they're sitting, or how well they know their neighbours. Once they have reached
+the end of the form, and we believe the form should be short, they hit done and
+the data is saved on our server.
 
-It should be noted that the questions of the simple form can be easily appended
-as additional questions to this second form.
+It should be noted that the questions of the first method form can be easily
+appended as additional questions to this second method form.
 
-The time at which a student enters their ID on the form, and this should be the
-first thing on the form, will give an indication of how long it took them to
-find a seat, since we also have the timestamp of when they entered.
+The time at which a student first visits the form webpage, will give an
+indication of how long it took them to find a seat, since we also have the
+timestamp of when they entered.
 
 The time taken for this second method depends on when we assume students will
 begin entering the lecture room and the time at which the last student will have
 entered by. We suggest arriving twenty minutes before the lecture since we
-really don't want to miss the first student. Twenty minutes after the lecture
-starts should be sufficient time for us to remain, since it is not vital for us
-to record a few very late students at the expense of our time.
+really don't want to miss the first student, as where they sit can largely
+impact the seating of others. Twenty minutes after the lecture starts should be
+sufficient time for us to remain, since it is not vital for us to record a few
+very late students at the expense of much of our time.
