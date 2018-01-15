@@ -16,25 +16,28 @@ class Student(Agent):
         unique_id: student identifier
         model: the associated ClassroomModel
     """
-    def __init__(self, unique_id, model):
+    def __init__(self, unique_id, model, use_sociability, random_seat_choice):
 
         super().__init__(unique_id, model)
 
         self.seated = False
         self.will_to_change_seat = False
-        self.random_seat_choice = False
+        self.moving_threshold = 5 # TODO: think about appropriate value!
+        self.moving_prob = 0.2 # TODO: think about appropriate value!
+        self.random_seat_choice = random_seat_choice
 
-        self.sociability = random.choice([-1,0,1])
-        #self.sociability = 0
+        if use_sociability:
+            self.sociability = random.choice([-1,0,1]) # TODO: use distribution from questionaire?
+        else:
+            self.sociability = 0
 
     """
     The seat selection procedure
     """
-    def choose_seat(self):
+    def choose_seat(self, old_seat=None):
 
         # determine all possible seats to choose from
         seat_options = []
-
         for cell in self.model.grid.coord_iter():
             content, x, y = cell
             for agent in content:
@@ -50,15 +53,31 @@ class Student(Agent):
                 # pick one randomly
                 seat_choice = random.choice(seat_options)
             else:
-                # pick seat with highest preference (if multiple seats are optimal, choose one of them randomly)
-                seat_utilities = [seat.get_total_utility(self) for seat in seat_options]
-                seat_choice = random.choice(np.array(seat_options)[np.where(seat_utilities == np.max(seat_utilities))])
+                if old_seat is None:
+                    # pick seat with highest preference (if multiple seats are optimal, choose one of them randomly)
+                    seat_utilities = [seat.get_total_utility(self) for seat in seat_options]
+                    seat_choice = random.choice(np.array(seat_options)[np.where(seat_utilities == np.max(seat_utilities))])
 
-            # move to the selected seat
-            seat_choice.occupied = True
-            self.model.grid.move_agent(self, seat_choice.pos)
-            self.seated = True
+                    # move to the selected seat
+                    seat_choice.occupied = True
+                    self.model.grid.move_agent(self, seat_choice.pos)
+                    self.seated = True
 
+                else:
+                    # pick seat with highest preference (if multiple seats are optimal, choose one of them randomly)
+                    # include cost to get away from the old seat
+                    seat_utilities = [seat.get_total_utility(self) - old_seat.get_stand_up_cost() for seat in seat_options]
+
+                    if np.max(seat_utilities) - old_seat.get_total_utility(self) > self.moving_threshold:
+                        # if the difference in utility between the current seat and another available seat exceeds the threshold, move to one of the optimal ones
+                        seat_choice = random.choice(np.array(seat_options)[np.where(seat_utilities == np.max(seat_utilities))])
+
+                        # move to the selected seat
+                        self.model.grid.move_agent(self, seat_choice.pos)
+                        seat_choice.occupied = True
+
+                        # make old seat available again
+                        agent.occupied = False
 
 
 
@@ -69,16 +88,19 @@ class Student(Agent):
 
         # only choose another seat if not seated yet or
         # if the student has the characteristic to change its seat again
-        if not self.seated or self.will_to_change_seat:
-
-            # make old seat available again
-            content = self.model.grid.get_cell_list_contents(self.pos)
-            for agent in content:
-                if type(agent) is Seat:
-                    agent.occupied = False
-
-            # choose and move to new seat
+        if not self.seated:
+            # choose and move to seat
             self.choose_seat()
+
+        if self.will_to_change_seat:
+            # with the given probability the student searches for a better seat
+            r = random.random()
+            if r < self.moving_prob:
+                # compare current seat utility with all other available seats. If there is a much better one, move
+                content = self.model.grid.get_cell_list_contents(self.pos)
+                for agent in content:
+                    if type(agent) is Seat:
+                        self.choose_seat(agent)
 
 
 class Seat(Agent):
@@ -101,27 +123,51 @@ class Seat(Agent):
         return self.model.classroom.seats[self.pos]
 
     """
-    Get the number of Students that have to stand up in order to reach this Seat
-    Determined relative to the closest aisle
+    Get the number of Students between the seat and the aisle.
+    The left and right side are compared and the minimum is chosen.
 
     Returns:
-        count: number of Students
+        count: number of Students to pass in order to reach the seat
     """
     def get_stand_up_cost(self):
 
         x, y = self.pos
 
-        closest_aisle = np.argmin([abs(x - i) for i in self.model.classroom.aisles_x])
-        aisle_x = self.model.classroom.aisles_x[closest_aisle]
-        if aisle_x > x:
-            row = [(i, y) for i in range(x + 1, aisle_x)]
-        else:
-            row = [(i, y) for i in range(aisle_x + 1, x)]
+        dist_to_aisles = np.array([(x - i) for i in self.model.classroom.aisles_x])
 
-        count = 0
-        for agent in self.model.grid.get_cell_list_contents(row):
-            if type(agent) is Student:
-                count += 1
+        # determine the number of people sitting between this seat and the closest aisle on the left side
+        dist_to_aisles_left = dist_to_aisles[np.where(dist_to_aisles > 0)]
+        if len(dist_to_aisles_left) > 0:
+            aisles_left = np.array(self.model.classroom.aisles_x)[np.where(dist_to_aisles > 0)]
+            aisle_left = aisles_left[np.argmin(dist_to_aisles_left)]
+            row_left = [(i, y) for i in range(aisle_left + 1, x)]
+
+            count_left = 0
+            for agent in self.model.grid.get_cell_list_contents(row_left):
+                if type(agent) is Student:
+                    count_left += 1
+
+        else:
+            # if there is no aisle on the left side, always count the student on the right side
+            count_left = np.infty
+
+        # determine the number of people sitting between this seat and the closest aisle on the right side
+        dist_to_aisles_right = dist_to_aisles[np.where(dist_to_aisles < 0)]
+        if len(dist_to_aisles_right) > 0:
+            aisles_right = np.array(self.model.classroom.aisles_x)[np.where(dist_to_aisles < 0)]
+            aisle_right = aisles_right[np.argmin(abs(dist_to_aisles_right))]
+            row_right = [(i, y) for i in range(x + 1, aisle_right)]
+
+            count_right = 0
+            for agent in self.model.grid.get_cell_list_contents(row_right):
+                if type(agent) is Student:
+                    count_right += 1
+
+        else:
+            # if there is no aisle on the right side, always count the student on the left side
+            count_right = np.infty
+
+        count = min(count_right, count_left)
 
         return count
 
@@ -209,12 +255,16 @@ class ClassroomModel(Model):
         height, width: dimensions of the classroom
         social_network: the underlying social network as a connectivity matrix (1 means friendship, 0 means indifference)
     """
-    def __init__(self, N, height, width, social_network=None):
-        self.max_num_agents = N
-        self.grid = MultiGrid(width, height, False)
-        self.classroom = ClassroomDesign(width, height)
-        self.schedule = RandomActivation(self)
+    def __init__(self, N, num_rows, blocks, seed, use_sociability, random_seat_choice, social_network=None):
 
+        self.max_num_agents = N
+        width = sum(blocks) + len(blocks) - 1
+        self.grid = MultiGrid(width, num_rows, False)
+        self.classroom = ClassroomDesign(blocks, num_rows)
+        random.seed(seed)
+        self.use_sociability = use_sociability
+        self.random_seat_choice = random_seat_choice
+        self.schedule = RandomActivation(self)
         self.interaction_matrix = np.array([[0.25, 0.5, 0.25], [1, 0, 1], [0.25, 0.5, 0.25]]).T
 
         if social_network is None:
@@ -225,9 +275,9 @@ class ClassroomModel(Model):
         # initialize seats (leave aisles free)
         for x in range(width):
             if not x in self.classroom.aisles_x:
-                for y in range(height):
+                for y in range(num_rows):
                     if not y in self.classroom.aisles_y:
-                        # create new seat with a position specific utility
+                        # create new seat
                         seat = Seat(self)
                         self.grid.place_agent(seat, (x,y))
 
@@ -240,7 +290,7 @@ class ClassroomModel(Model):
         # as long as the max number of students is not reached, add a new one
         n = self.schedule.get_agent_count()
         if n < self.max_num_agents:
-            student = Student(n, self)
+            student = Student(n, self, self.use_sociability, self.random_seat_choice)
             self.schedule.add(student)
 
             # place new student randomly at one of the entrances
@@ -258,16 +308,23 @@ class ClassroomDesign():
     Args:
         width, height: dimensions of the classroom
     """
-    def __init__(self, width, height):
+    def __init__(self, blocks, num_rows):
+
+        width = sum(blocks) + len(blocks) - 1
 
         # define vertical aisles
-        self.aisles_x = [int(width/3),2*int(width/3)]
+        self.aisles_x = []
+        current_x = 0
+        for b in range(len(blocks)-1):
+            current_x += blocks[b]
+            self.aisles_x.append(current_x)
+            current_x += 1
 
-        # define horizontal aisles
+        # define horizontal aisle in the front
         self.aisles_y = [0]
 
         # define entrances
         self.entrances = [((0, 0)),((width-1,0))]
 
         # define utility/attractivity of each seat location (TODO: assign sensible values)
-        self.seats = np.zeros((width, height))
+        self.seats = np.zeros((width, num_rows))
