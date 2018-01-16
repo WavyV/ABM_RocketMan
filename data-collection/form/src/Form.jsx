@@ -1,8 +1,8 @@
+import { SEATS, TAKEN } from 'src/seats.jsx';
 import Auditorium from 'src/Auditorium.jsx';
 import React from 'react';
-import request from 'superagent';
 import Slider from 'src/Slider.jsx';
-import { SEATS, TAKEN } from 'src/seats.jsx';
+import request from 'superagent';
 
 const buttonStyle = {
   backgroundColor: 'white',
@@ -27,7 +27,7 @@ class Form extends React.Component {
 
   // Update local state with a user's answer.
   handleInput = (input, key) => {
-    console.log(`Input: ${input} from key ${key}`)
+    console.log(`Input: ${input} from key ${key}`);
     this.state[key] = input;
   }
 
@@ -52,19 +52,19 @@ class Form extends React.Component {
   }
 
   // Render a discrete 1-5 question.
-  render1To5(question, info, questionID) {
-    const defaultValue = 3;
+  render1To5(question, info, questionID, allow0) {
+    const defaultValue = allow0 ? 0 : 3;
     // Add default value to data if not already.
     if (!(questionID in this.state)) {
       this.handleInput(defaultValue, questionID);
     }
-    return(
+    return (
       <div>
         <div>{question}</div>
         <div style={infoText}>{info}</div>
         <input
           type="number"
-          min={1}
+          min={allow0 ? 0 : 1}
           max={5}
           step={1}
           defaultValue={defaultValue}
@@ -75,7 +75,7 @@ class Form extends React.Component {
   }
 
   render() {
-   // If we're done we only show a thank you message.
+    // If we're done we only show a thank you message.
     if (this.state.done) {
       return <div>THANK YOU!</div>;
     }
@@ -83,38 +83,52 @@ class Form extends React.Component {
     return (
       <div className="form">
 
-        {this.renderQuestion(`When you sat down in your seat initially, how many
-          people did you have to pass in your row to get to your seat?`,
-          null, 'crosscost')}
+        {this.renderQuestion(
+           `When you sat down in your seat initially, how many people did you
+           have to pass in your row to get to your seat?`,
+           null, 'crosscost',
+        )}
 
-        {this.renderQuestion(`Of the students attending this course, with
-          how many people do you consider yourself familiar?`,
+        {this.renderQuestion(
+           `Of the students attending this course, with how many people do you
+           consider yourself familiar?`,
           '(Cambridge dictionary: familiar, to know something or someone well.)',
-          'coursefriends')}
+          'coursefriends',
+        )}
 
-        {this.render1To5(`If someone is sitting immediately to your left, how
-          familiar are you with that person?`,
-          `(1 = Not familiar. 2 = Slightly familiar. 3 = Somewhat familiar.
-          4 = Familiar. 5 = Very familiar.)`,
-          'knowleft')}
+        {this.render1To5(
+           `If someone is sitting immediately to your left, how familiar are you
+           with them?`,
+           `(0 = Nobody immediately left. 1 = Not familiar. 2 = Slightly
+           familiar. 3 = Somewhat familiar. 4 = Familiar. 5 = Very familiar.)`,
+           'knowleft',
+           true,
+        )}
 
-        {this.render1To5(`If someone is sitting immediately to your right, how
-          familiar are you with them?`,
-          `(1 = Not familiar. 2 = Slightly familiar. 3 = Somewhat familiar.
-          4 = Familiar. 5 = Very familiar.)`,
-          'knowright')}
+        {this.render1To5(
+           `If someone is sitting immediately to your right, how familiar are
+           you with them?`,
+           `(0 = Nobody immediately right. 1 = Not familiar. 2 = Slightly
+           familiar. 3 = Somewhat familiar. 4 = Familiar. 5 = Very familiar.)`,
+           'knowright',
+           true,
+        )}
 
-        {this.render1To5(`On entering a lecture room how important is it to you
-          to sit next to someone with whom you are familiar?`,
-          `(1 = Not important. 2 = Slightly important. 3 = Somewhat important.
-          4 = Important. 5 = Very important.)`,
-          'sitnexttofamiliar')}
+        {this.render1To5(
+           `On entering a lecture room how important is it to you to sit next to
+           someone with whom you are familiar?`,
+          `(1 = Not important. 2 = Slightly important. 3 = Somewhat important. 4
+          = Important. 5 = Very important.)`,
+          'sitnexttofamiliar',
+        )}
 
-        {this.render1To5(`Consider entering a lecture room where you don't know
-          anyone, how important to you is it to sit next to another person?`,
-          `(1 = Not important. 2 = Slightly important. 3 = Somewhat important.
-          4 = Important. 5 = Very important.)`,
-          'sitnexttoperson')}
+        {this.render1To5(
+          `Consider entering a lecture room where you don't know anyone, how
+          important to you is it to sit next to another person?`,
+          `(1 = Not important. 2 = Slightly important. 3 = Somewhat important. 4
+          = Important. 5 = Very important.)`,
+          'sitnexttoperson',
+        )}
 
         <Slider
           question="Estimate the ratio of importance to you of sitting

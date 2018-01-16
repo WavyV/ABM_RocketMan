@@ -1,9 +1,6 @@
 import PropTypes from 'prop-types';
 import React from 'react';
 
-const EMPTY = 0;
-const SEAT = 1;
-
 const auditoriumStyle = {
   display: 'flex',
   flexDirection: 'column',
@@ -46,14 +43,13 @@ class Auditorium extends React.Component {
       return;
     }
     // Select if the cell is a seat.
-    if (this.props.seats[i][j] === SEAT) {
+    if (this.props.seats[i][j] === 1) {
       this.props.lift(`${i}, ${j}`);
       this.setState({ selected: [i, j] });
     }
   }
 
   render() {
-
     // First we build our rows of empty and seat cells.
     const height = this.props.seats.length;
     const rows = [];
@@ -62,7 +58,7 @@ class Auditorium extends React.Component {
       const row = [];
       // For each column in row.
       for (let j = 0; j < this.props.seats[i].length; j += 1) {
-        let thisCellStyle = { ...cellStyle };
+        const thisCellStyle = { ...cellStyle };
         // If a cell is a seat.
         if (this.props.seats[i][j]) {
           thisCellStyle.backgroundColor = 'orange';
