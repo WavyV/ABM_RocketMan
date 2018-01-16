@@ -41,7 +41,7 @@ class Student(Agent):
         for cell in self.model.grid.coord_iter():
             content, x, y = cell
             for agent in content:
-                if type(agent) is Seat and not agent.occupied:
+                if type(agent) is Seat and agent.student is None:
                     seat_options.append(agent)
 
 
@@ -59,7 +59,7 @@ class Student(Agent):
                     seat_choice = random.choice(np.array(seat_options)[np.where(seat_utilities == np.max(seat_utilities))])
 
                     # move to the selected seat
-                    seat_choice.occupied = True
+                    seat_choice.student = self
                     self.model.grid.move_agent(self, seat_choice.pos)
                     self.seated = True
 
@@ -74,7 +74,7 @@ class Student(Agent):
 
                         # move to the selected seat
                         self.model.grid.move_agent(self, seat_choice.pos)
-                        seat_choice.occupied = True
+                        seat_choice.student = self
 
                         # make old seat available again
                         agent.occupied = False
@@ -114,7 +114,7 @@ class Seat(Agent):
     def __init__(self, model):
 
         self.model = model
-        self.occupied = False
+        self.student = None
 
     """
     Get the position utility of the seat, based on its location in the Classroom
@@ -209,7 +209,7 @@ class Seat(Agent):
     Returns:
         utility: high values represent attractivity
     """
-    def get_social_utility(self, student):
+    def get_social_utility(self, student, use_friendship=True, use_sociability=True):
 
         interaction_radius = int(self.model.interaction_matrix.shape[0]/2)
         neighborhood = self.get_neighborhood(interaction_radius)
@@ -223,11 +223,13 @@ class Seat(Agent):
                 y = l + interaction_radius
 
                 if neighborhood[x,y] >= 0: # if there is a student
-                    friendship = self.model.social_network[int(student.unique_id), int(neighborhood[x,y])]
-                    utility += self.model.interaction_matrix[x,y] * friendship
+
+                    if use_friendship:
+                        friendship = self.model.social_network[int(student.unique_id), int(neighborhood[x,y])]
+                        utility += self.model.interaction_matrix[x,y] * friendship
 
                     # if direct neighbor and no social connection, adjust preference based on the student's sociability
-                    if abs(k) == 1 and l == 0 and friendship == 0:
+                    if use_sociability and abs(k) == 1 and l == 0 and friendship == 0:
                         utility += student.sociability
 
         return utility
@@ -298,6 +300,8 @@ class ClassroomModel(Model):
             self.grid.place_agent(student, initial_pos)
 
         self.schedule.step()
+
+
 
 
 class ClassroomDesign():
