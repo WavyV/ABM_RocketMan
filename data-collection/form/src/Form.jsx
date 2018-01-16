@@ -4,8 +4,6 @@ import request from 'superagent';
 import Slider from 'src/Slider.jsx';
 import { SEATS, TAKEN } from 'src/seats.jsx';
 
-console.log(SEATS);
-
 const buttonStyle = {
   backgroundColor: 'white',
   borderRadius: '3px',
@@ -55,6 +53,11 @@ class Form extends React.Component {
 
   // Render a discrete 1-5 question.
   render1To5(question, info, questionID) {
+    const defaultValue = 3;
+    // Add default value to data if not already.
+    if (!(questionID in this.state)) {
+      this.handleInput(defaultValue, questionID);
+    }
     return(
       <div>
         <div>{question}</div>
@@ -64,7 +67,7 @@ class Form extends React.Component {
           min={1}
           max={5}
           step={1}
-          defaultValue={3}
+          defaultValue={defaultValue}
           onChange={e => this.handleInput(e.target.value, questionID)}
         />
       </div>

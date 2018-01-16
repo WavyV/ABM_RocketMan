@@ -13,7 +13,7 @@ form_path = os.path.join(dir_path, "form.json")
 # Create data as arrays if not exists.
 if not os.path.isfile(form_path):
     with open(form_path, "w") as f:
-        json.dump(dict(), f)
+        json.dump([], f)
 
 # Load data into memory.
 with open(form_path) as f:
@@ -41,12 +41,8 @@ def bundle():
 @app.route("/done", methods=["POST"])
 def done():
     userdata = request.get_json()
-    userid = userdata.get('userid', False)
-    print(userdata)
-    if userid:
-        FORM_DATA[userid] = userdata
-        print("Form for user {0}".format(userid))
-    print(colored("Form without ID", "red"))
+    FORM_DATA.append(userdata)
+    print("Received form")
     return ""
 
 
