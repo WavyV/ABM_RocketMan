@@ -4,46 +4,17 @@ import React from 'react';
 const EMPTY = 0;
 const SEAT = 1;
 
-// Style for container which contains rows.
 const auditoriumStyle = {
   display: 'flex',
   flexDirection: 'column',
-  width: '100vw',
+  width: '99vw',
 };
 
-// Style for text above of below auditorium.
-const infoTextStyle = {
-  textAlign: 'center',
-};
-
-// Style for a row of seats.
-const rowStyle = {
-  display: 'flex',
-};
-
-// Style used by all cells.
 const cellStyle = {
   flexGrow: 1,
   minHeight: '50px',
-  border: '1px solid black',
-};
-
-// Style for an empty cell.
-const emptyStyle = {
-  ...cellStyle,
+  border: '2px solid white',
   backgroundColor: 'lightgray',
-};
-
-// Style for a cell with a seat.
-const seatStyle = {
-  ...cellStyle,
-  backgroundColor: 'lightblue',
-};
-
-// Style for a selected cell.
-const selectedStyle = {
-  ...cellStyle,
-  backgroundColor: 'red',
 };
 
 class Auditorium extends React.Component {
@@ -52,6 +23,9 @@ class Auditorium extends React.Component {
     question: PropTypes.string.isRequired,
     // A 2d array of 0 (an empty cell) or 1 (a seat).
     seats: PropTypes.array.isRequired,
+    // A 2d array of 0 (unavailable) or 1 (taken).
+    // Only used to make some seats unavailable.
+    taken: PropTypes.array,
     // Function to return selected seat to parent.
     lift: PropTypes.func.isRequired,
   }
@@ -67,6 +41,11 @@ class Auditorium extends React.Component {
 
   // Select a seat by given indices.
   selectSeat = (i, j) => {
+    // Can't select an unavailable seat.
+    if (this.props.taken && this.props.taken[i][j]) {
+      return;
+    }
+    // Select if the cell is a seat.
     if (this.props.seats[i][j] === SEAT) {
       this.props.lift(`${i}, ${j}`);
       this.setState({ selected: [i, j] });
@@ -74,46 +53,53 @@ class Auditorium extends React.Component {
   }
 
   render() {
+
     // First we build our rows of empty and seat cells.
     const height = this.props.seats.length;
-    const width = this.props.seats[0].length;
     const rows = [];
     // For each row in Auditorium.
     for (let i = 0; i < height; i += 1) {
       const row = [];
       // For each column in row.
-      for (let j = 0; j < width; j += 1) {
-        let thisCellStyle = {};
-        switch (this.props.seats[i][j]) {
-          case EMPTY:
-            thisCellStyle = emptyStyle;
-            break;
-          case SEAT:
-            thisCellStyle = seatStyle;
-            break;
-          default: throw new Error('Unknown cell type');
+      for (let j = 0; j < this.props.seats[i].length; j += 1) {
+        let thisCellStyle = { ...cellStyle };
+        // If a cell is a seat.
+        if (this.props.seats[i][j]) {
+          thisCellStyle.backgroundColor = 'orange';
         }
-        // Override style if seat is selected.
+        // If a seat is unavailable.
+        if (this.props.taken && this.props.taken[i][j]) {
+          thisCellStyle.backgroundColor = 'black';
+        }
+        // If a cell is selected.
         if (i === this.state.selected[0] &&
             j === this.state.selected[1]) {
-          thisCellStyle = selectedStyle;
+          thisCellStyle.backgroundColor = 'red';
         }
+        // Add the seat to the row.
         row.push(<div
           style={thisCellStyle}
           onClick={() => this.selectSeat(i, j)}
         />);
       }
-      rows.push(<div style={rowStyle}>{row}</div>);
+      // Add the row of seats to all rows.
+      rows.push(<div style={{ display: 'flex' }}>{row}</div>);
     }
+
     // Return the HTML structure with the above rows.
     return (
       <div>
         <div>{this.props.question}</div>
-        <div>Answer by clicking on a seat (light blue color).</div>
+        <div style={{ fontSize: 'large' }}>
+          Answer by clicking on a seat (orange color).
+        </div>
+        <div style={{ fontSize: 'large' }}>
+          {this.props.taken ? 'Black seats are taken' : null}
+        </div>
         <div style={auditoriumStyle}>
-          <div style={infoTextStyle}>BACK WALL</div>
+          <div style={{ textAlign: 'center' }}>LECTURER</div>
           {rows}
-          <div style={infoTextStyle}>LECTURER</div>
+          <div style={{ textAlign: 'center' }}>BACK WALL</div>
         </div>
       </div>
     );

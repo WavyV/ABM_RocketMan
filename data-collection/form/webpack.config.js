@@ -19,6 +19,11 @@ module.exports = {
   },
   module: {
     rules: [
+      // Load .css files.
+      {
+        test: /\.css$/,
+        use: [ 'style-loader', 'css-loader' ]
+      },
       // Load .jsx files using Babel.
       {
         test: /\.jsx$/,
