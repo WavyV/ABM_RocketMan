@@ -9,7 +9,7 @@ const auditoriumStyle = {
 
 const cellStyle = {
   flexGrow: 1,
-  minHeight: '50px',
+  minHeight: '40px',
   border: '2px solid white',
   backgroundColor: 'lightgray',
 };
