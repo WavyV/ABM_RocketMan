@@ -144,7 +144,50 @@ def animate(i):
 
     return tuple(images)
 
-anim = animation.FuncAnimation(fig, animate, frames=num_iterations, interval=300, repeat=False)
 
+annotes = []
+for i, ax in enumerate(fig.axes):
+    a = ax.annotate("seat", xy=(0,0), xytext=(20,20),textcoords="offset points",
+                        bbox=dict(boxstyle="round", fc="w"),
+                        arrowprops=dict(arrowstyle="->"))
+    a.set_visible(False)
+    annotes.append(a)
+
+"""
+Mouse cursor interactivity
+"""
+
+def hover(event):
+    for i, ax in enumerate(fig.axes):
+        a = annotes[i]
+        if event.inaxes == ax:
+            cond, ind = images[i].contains(event)
+            if cond:
+                x, y = int(np.round(event.xdata)), int(np.round(event.ydata))
+                value = int(images[i].get_array()[y][x])
+
+                text = ""
+                if value == -8:
+                    text = "AISLE"
+                elif value == -20:
+                    text = "DOOR"
+                elif value <= -10:
+                    text = "Empty Seat\nAccessibility: {}".format(value + 10)
+                elif value >= 0:
+                    text = "Filled Seat\nHappiness: {}".format(value)
+
+                # text = "Seat: {}".format(value)
+                a.set_text(text)
+                a.xy = (x, y)
+                a.set_visible(True)
+                fig.canvas.draw_idle()
+
+        else:
+            a.set_visible(False)
+            fig.canvas.draw_idle()
+
+
+anim = animation.FuncAnimation(fig, animate, frames=num_iterations, interval=300, repeat=False)
+fig.canvas.mpl_connect("motion_notify_event", hover)
 fig.tight_layout()
 plt.show()
