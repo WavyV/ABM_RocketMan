@@ -36,10 +36,17 @@ Different simulations can be performed:
 
 ## How to Run Simulations
 
-To run the model and visualize the seating process, run
+To run the model and visualize the seating process, run the following to
+generate the data:
 
 ```
-    $ python3 run_classroom_seating.py
+    $ python3 run_classroom_seating.py generate
+```
+
+And then this to animate the models using the generated data:
+
+```
+    $ python3 run_classroom_seating.py animate
 ```
 
 ### To be determined
