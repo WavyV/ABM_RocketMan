@@ -4,6 +4,7 @@ from classroom_seating import *
 import matplotlib.pyplot as plt
 import networkx as nx
 from matplotlib import animation
+from matplotlib.text import OffsetFrom
 
 """
 Run simulations of the ClassroomModel and visualize the seating process
@@ -147,9 +148,14 @@ def animate(i):
 
 annotes = []
 for i, ax in enumerate(fig.axes):
-    a = ax.annotate("seat", xy=(0,0), xytext=(20,20),textcoords="offset points",
-                        bbox=dict(boxstyle="round", fc="w"),
-                        arrowprops=dict(arrowstyle="->"))
+    helper = ax.annotate("", xy=(0.5, 0), xycoords="axes fraction",
+                  va="bottom", ha="center")
+    offset_from = OffsetFrom(helper, (0.5, 0))
+    a = ax.annotate("seat", xy=(0,0), xycoords="data",
+                  xytext=(0, -10), textcoords=offset_from,
+                  va="top", ha="center",
+                  bbox=dict(boxstyle="round", fc="w"),
+                  arrowprops=dict(arrowstyle="->"), alpha=1)
     a.set_visible(False)
     annotes.append(a)
 
