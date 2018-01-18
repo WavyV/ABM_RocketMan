@@ -144,10 +144,10 @@ for i, ax in enumerate(fig.axes):
 
 
 """
-Animate each model at a given time step, from given data.
+Returns images for a given iteration, from the given model data.
 """
-def animate(iteration, all_model_states):
-    print("Iteration: {0}".format(iteration))
+def iteration_images(iteration, all_model_states):
+    fig.canvas.set_window_title("Iteration: {}".format(iteration))
     for i in range(len(models)):
         model_state = all_model_states[i][iteration]
         images[i].set_data(model_state)
@@ -158,12 +158,51 @@ def animate(iteration, all_model_states):
 Animate the models using data loaded from a file.
 """
 def animate_models(num_iterations):
+    # First load the previously generated model data.
     with open(MODEL_DATA_PATH, "rb") as f:
         all_model_states = pickle.load(f)
-    animate_with_data = lambda iteration: animate(iteration, all_model_states)
-    anim = animation.FuncAnimation(fig, animate_with_data,
-                                   frames=num_iterations,
-                                   interval=num_iterations, repeat=False)
+    # Initial animation state.
+    iteration = 0
+    running = True
+
+    # Manages the logic deciding what the next iteration is.
+    # Returns a tuple of images for the decided upon iteration.
+    def next_iteration(_):
+        nonlocal iteration
+        if running:
+            iteration += 1
+        iteration = max(0, min(iteration, num_iterations - 1))
+        return iteration_images(iteration, all_model_states)
+
+    # Alter animation procedure based on user input.
+    def key_press_handler(event):
+        nonlocal iteration
+        nonlocal running
+        # Pause/resume animation on "p" key.
+        if event.key == "p":
+            running ^= True
+        # Move to last frame on "e" key.
+        elif event.key == "e":
+            iteration = num_iterations - 1
+        # Move to initial frame on "0" key.
+        elif event.key == "0":
+            iteration = -1
+        # Move left on "←" key.
+        elif event.key == "left":
+            iteration -= 1
+        # Move right on "→" key.
+        elif event.key == "right":
+            iteration += 1
+        # Move 10 left on "a" key.
+        elif event.key == "a":
+            iteration -= 10
+        # Move 10 right on "d" key.
+        elif event.key == "d":
+            iteration += 10
+
+    fig.canvas.mpl_connect("key_press_event", key_press_handler)
+    anim = animation.FuncAnimation(fig, next_iteration, frames=None,
+                                   interval=300)
     fig.tight_layout()
     plt.show()
 
