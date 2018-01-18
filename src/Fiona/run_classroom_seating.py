@@ -116,7 +116,7 @@ annotes = []
 
 for i, ax in enumerate(fig.axes):
 
-    image, info = get_seat_blocking(models[i], model_utilities[i])
+    image, info = get_model_state(models[i], model_utilities[i])
     images.append(ax.imshow(image, vmin=min_value, vmax=max_value, cmap = "RdYlGn", interpolation=None))
     ax.axis("off")
     ax.set_title(model_names[i])
@@ -250,7 +250,7 @@ def generate_data(num_iterations):
         for iteration in range(num_iterations):
             print("Iteration {0}".format(iteration + 1))
             models[i].step()
-            model_states.append(get_seat_blocking(models[i], model_utilities[i]))
+            model_states.append(get_model_state(models[i], model_utilities[i]))
         all_model_states.append(model_states)
     # Save all model state data.
     with open(MODEL_DATA_PATH, "wb") as f:
