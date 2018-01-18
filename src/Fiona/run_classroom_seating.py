@@ -53,9 +53,13 @@ Returns:
     blocking: 2D array representing the classroom.
                 - The level of seat blocking is represented by decreasing negative values (the smaller the costlier to reach the seat)
                 - The level of "happiness" of each student is represented by positive values (the larger the happier)
+    students: 2D array containing Student objects at their respective positions
 """
 def get_seat_blocking(model, utilities):
     blocking = -8*np.ones((model.grid.width, model.grid.height))
+    students = np.empty(blocking.shape, dtype=Student)
+    seat_utilities = model.classroom.seats
+
     for cell in model.grid.coord_iter():
         content, x, y = cell
         for agent in content:
@@ -66,6 +70,7 @@ def get_seat_blocking(model, utilities):
                 else:
                     # seat is occupied. Determine happiness of the student (depending on the utility component used in the given model)
                     blocking[x,y] = 10
+                    students[x,y] = agent.student
 
                     if utilities[0]:
                         blocking[x,y] += agent.get_position_utility()
@@ -80,7 +85,7 @@ def get_seat_blocking(model, utilities):
     for pos in model.classroom.entrances:
         blocking[pos[0],pos[1]] = -20
 
-    return blocking
+    return blocking.T, students.T, seat_utilities.T
 
 
 """
@@ -118,19 +123,22 @@ model_utilities = [[True,False,False],[True,True,True],[True,True,True]]
 Initialize the plots
 """
 fig, axs = plt.subplots(1, len(models), figsize=(5*len(models),5))
-#min_value = -max(blocks)
-#max_value = 5
+
 min_value = -20
 max_value = 20
 
 images = []
+model_data = []
 
 for i, ax in enumerate(fig.axes):
 
-    model_state = get_seat_blocking(models[i], model_utilities[i]).T
-    images.append(ax.imshow(model_state, vmin=min_value, vmax=max_value, cmap = "RdYlGn", interpolation=None))
+    #model_state = get_seat_blocking(models[i], model_utilities[i]).T
+    model_state = get_seat_blocking(models[i], model_utilities[i])
+    images.append(ax.imshow(model_state[0], vmin=min_value, vmax=max_value, cmap = "RdYlGn", interpolation=None))
     ax.axis("off")
     ax.set_title(model_names[i])
+
+    model_data.append(model_state[1])
 
 
 """
@@ -140,8 +148,10 @@ def animate(i):
     # advance all models
     for i in range(len(models)):
         models[i].step()
-        model_state = get_seat_blocking(models[i], model_utilities[i]).T
-        images[i].set_data(model_state)
+        #model_state = get_seat_blocking(models[i], model_utilities[i]).T
+        visualization, students, seats = get_seat_blocking(models[i], model_utilities[i])
+        images[i].set_data(visualization)
+        model_data[i] = (students, seats)
 
     return tuple(images)
 
@@ -171,6 +181,8 @@ def hover(event):
             if cond:
                 x, y = int(np.round(event.xdata)), int(np.round(event.ydata))
                 value = int(images[i].get_array()[y][x])
+                student = model_data[i][0][y,x]
+                seat_utility = model_data[i][1][y,x]
 
                 text = ""
                 if value == -8:
@@ -178,11 +190,11 @@ def hover(event):
                 elif value == -20:
                     text = "DOOR"
                 elif value <= -10:
-                    text = "Empty Seat\nAccessibility: {}".format(value + 10)
+                    text = "EMPTY SEAT\nSeat utility: {}\nAccessibility: {}".format(seat_utility, value + 10)
                 elif value >= 0:
-                    text = "Filled Seat\nHappiness: {}".format(value)
+                    text = "FILLED SEAT\nSeat utility: {}\nStudent sociability: {}\nInitial happiness (t = {}): {}\nCurrent happiness: {}".format(seat_utility,
+                                student.sociability, student.unique_id, student.initial_happiness, value - 10)
 
-                # text = "Seat: {}".format(value)
                 a.set_text(text)
                 a.xy = (x, y)
                 a.set_visible(True)
