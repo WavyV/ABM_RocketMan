@@ -53,11 +53,6 @@ class Form extends React.Component {
 
   // Render a discrete 1-5 question.
   render1To5(question, info, questionID, allow0) {
-    const defaultValue = allow0 ? 0 : 3;
-    // Add default value to data if not already.
-    if (!(questionID in this.state)) {
-      this.handleInput(defaultValue, questionID);
-    }
     return (
       <div>
         <div>{question}</div>
@@ -67,7 +62,6 @@ class Form extends React.Component {
           min={allow0 ? 0 : 1}
           max={5}
           step={1}
-          defaultValue={defaultValue}
           onChange={e => this.handleInput(e.target.value, questionID)}
         />
       </div>
