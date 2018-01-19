@@ -25,7 +25,8 @@ Determine relevant properties of the current model state and create an image rep
 
 Args:
     model: the classroom model to analyse
-    utilities: list of booleans [location, sociability, friendship] specifying which utilities are used in the model
+    utilities: list of booleans [location, sociability, friendship] specifying
+        which utilities are used in the model
 
 Returns:
     image: 2D array representing the classroom.
@@ -47,7 +48,9 @@ def get_model_state(model, utilities):
                     # seat is available. Determine level of blocking
                     image[y,x] = -10-agent.get_stand_up_cost()
                 else:
-                    # seat is occupied. Determine happiness of the student (depending on the utility component used in the given model)
+                    # seat is occupied. Determine happiness of the student
+                    # (depending on the utility component used in the given
+                    # model)
                     image[y,x] = 10
 
                     if utilities[0]:
@@ -75,7 +78,6 @@ def get_model_state(model, utilities):
 Set the parameters
 """
 seed = 0
-num_iterations = 300
 
 # The classroom layout
 blocks = [10, 15, 10]
@@ -181,6 +183,7 @@ def iteration_images(iteration, all_model_states):
         image, info = all_model_states[i][iteration]
         images[i].set_data(image)
         model_data[i] = info
+
     return tuple(images)
 
 
@@ -232,6 +235,7 @@ def animate_models(num_iterations):
 
     fig.canvas.mpl_connect("key_press_event", key_press_handler)
     fig.canvas.mpl_connect("motion_notify_event", hover)
+
     anim = animation.FuncAnimation(fig, next_iteration, frames=None,
                                    interval=300)
     fig.tight_layout()
