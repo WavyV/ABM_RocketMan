@@ -31,6 +31,8 @@ class Student(Agent):
         else:
             self.sociability = 0
 
+        self.initial_happiness = 0
+
     """
     The seat selection procedure
     """
@@ -61,6 +63,7 @@ class Student(Agent):
                     # move to the selected seat
                     seat_choice.student = self
                     self.model.grid.move_agent(self, seat_choice.pos)
+                    self.initial_happiness = np.max(seat_utilities) + seat_choice.get_stand_up_cost()
                     self.seated = True
 
                 else:
@@ -74,6 +77,7 @@ class Student(Agent):
 
                         # move to the selected seat
                         self.model.grid.move_agent(self, seat_choice.pos)
+                        self.initial_happiness = np.max(seat_utilities) + seat_choice.get_stand_up_cost()
                         seat_choice.student = self
 
                         # make old seat available again

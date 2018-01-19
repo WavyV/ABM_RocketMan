@@ -6,6 +6,7 @@ import networkx as nx
 from matplotlib import animation
 import pickle
 import sys
+from matplotlib.text import OffsetFrom
 
 MODEL_DATA_PATH = "_model_data.json"
 NUM_ITERATIONS = 300
@@ -20,36 +21,7 @@ Usage:
 
 
 """
-Determine the seating distribution of a given model instance
-
-Args:
-    model: the classroom model to analyse
-
-Returns: seating_distr: 2D array representing the classroom with aisles,
-    entrances, seats and students """
-def get_seating_distribution(model):
-    seating_distr = np.zeros((model.grid.width, model.grid.height))
-    for cell in model.grid.coord_iter():
-        content, x, y = cell
-        for agent in content:
-            if type(agent) is Seat:
-                if agent.student is None:
-                    # seat is available
-                    seating_distr[x,y] = -5
-                else:
-                    # seat is occupied. Determine happiness of the student
-                    seating_distr[x,y] = 5 + agent.get_total_utility(agent.student)
-
-                    #seating_distr[x,y] = 2
-
-    for pos in model.classroom.entrances:
-        seating_distr[pos[0],pos[1]] = -15
-
-    return seating_distr
-
-
-"""
-Determine the "stand-up-cost" for all seats
+Determine relevant properties of the current model state and create an image representation
 
 Args:
     model: the classroom model to analyse
@@ -57,40 +29,49 @@ Args:
         which utilities are used in the model
 
 Returns:
-    blocking: 2D array representing the classroom.
-        - The level of seat blocking is represented by decreasing negative
-          values (the smaller the costlier to reach the seat)
-        - The level of "happiness" of each student is represented by
-          positive values (the larger the happier) """
-def get_seat_blocking(model, utilities):
-    blocking = -8*np.ones((model.grid.width, model.grid.height))
+    image: 2D array representing the classroom.
+                - The level of seat blocking is represented by decreasing negative values (the smaller the costlier to reach the seat)
+                - The level of "happiness" of each student is represented by positive values (the larger the happier)
+    info: 3D array comprising the 4 matrices 'seat_utilities', 'student_IDs', 'student_sociabilities' and 'initial_happiness'
+"""
+def get_model_state(model, utilities):
+    image = -8*np.ones((model.grid.height, model.grid.width))
+    info = np.zeros((model.grid.height, model.grid.width, 4))
+
     for cell in model.grid.coord_iter():
         content, x, y = cell
         for agent in content:
             if type(agent) is Seat:
+                # save seat utility
+                info[y,x,0] = model.classroom.seats[x,y]
                 if agent.student is None:
                     # seat is available. Determine level of blocking
-                    blocking[x,y] = -10-agent.get_stand_up_cost()
+                    image[y,x] = -10-agent.get_stand_up_cost()
                 else:
                     # seat is occupied. Determine happiness of the student
                     # (depending on the utility component used in the given
                     # model)
-                    blocking[x,y] = 10
+                    image[y,x] = 10
 
                     if utilities[0]:
-                        blocking[x,y] += agent.get_position_utility()
+                        image[y,x] += agent.get_position_utility()
                     if utilities[1] and utilities[2]:
-                        blocking[x,y] += agent.get_social_utility(agent.student)
+                        image[y,x] += agent.get_social_utility(agent.student)
                     else:
                         if utilities[1]:
-                            blocking[x,y] += agent.get_social_utility(agent.student, use_friendship=False)
+                            image[y,x] += agent.get_social_utility(agent.student, use_friendship=False)
                         if utilities[2]:
-                            blocking[x,y] += agent.get_social_utility(agent.student, use_sociability=False)
+                            image[y,x] += agent.get_social_utility(agent.student, use_sociability=False)
+
+                    # save student's properties
+                    info[y,x,1] = agent.student.unique_id
+                    info[y,x,2] = agent.student.sociability
+                    info[y,x,3] = agent.student.initial_happiness
 
     for pos in model.classroom.entrances:
-        blocking[pos[0],pos[1]] = -20
+        image[pos[1],pos[0]] = -20
 
-    return blocking
+    return image, info
 
 
 """
@@ -127,20 +108,70 @@ model_utilities = [[True,False,False],[True,True,True],[True,True,True]]
 Initialize the plots
 """
 fig, axs = plt.subplots(1, len(models), figsize=(5*len(models),5))
-#min_value = -max(blocks)
-#max_value = 5
+
 min_value = -20
 max_value = 20
 
 images = []
+model_data = []
+annotes = []
 
 for i, ax in enumerate(fig.axes):
 
-    model_state = get_seat_blocking(models[i], model_utilities[i]).T
-    images.append(ax.imshow(model_state, vmin=min_value, vmax=max_value,
-                            cmap="RdYlGn", interpolation=None))
+    image, info = get_model_state(models[i], model_utilities[i])
+    images.append(ax.imshow(image, vmin=min_value, vmax=max_value, cmap = "RdYlGn", interpolation=None))
     ax.axis("off")
     ax.set_title(model_names[i])
+
+    model_data.append(info)
+
+    # initialize annotations
+    helper = ax.annotate("", xy=(0.5, 0), xycoords="axes fraction",
+                  va="bottom", ha="center")
+    offset_from = OffsetFrom(helper, (0.5, 0))
+    a = ax.annotate("seat", xy=(0,0), xycoords="data",
+                  xytext=(0, -10), textcoords=offset_from,
+                  va="top", ha="center",
+                  bbox=dict(boxstyle="round", fc="w"),
+                  arrowprops=dict(arrowstyle="->"), alpha=1)
+    a.set_visible(False)
+    annotes.append(a)
+
+
+"""
+Mouse cursor interactivity
+"""
+def hover(event):
+    for i, ax in enumerate(fig.axes):
+        a = annotes[i]
+        if event.inaxes == ax:
+            cond, ind = images[i].contains(event)
+            if cond:
+                x, y = int(np.round(event.xdata)), int(np.round(event.ydata))
+                value = int(images[i].get_array()[y][x])
+                seat_utility, student_id, sociability, initial_happiness = model_data[i][y,x]
+
+                text = ""
+                if value == -8:
+                    text = "AISLE"
+                elif value == -20:
+                    text = "DOOR"
+                elif value <= -10:
+                    text = "EMPTY SEAT\nSeat utility: {}\nAccessibility: {}".format(seat_utility, value + 10)
+                elif value >= 0:
+                    text = "FILLED SEAT\n {} {:.2f} \n {} {} \n {} {:.2f} \n {} {:.2f}".format("Seat utility:", seat_utility,
+                                "Student sociability:", int(sociability), "Initial happiness (t = {}):".format(int(student_id)),
+                                initial_happiness, "Current happiness:", value - 10)
+
+                a.set_text(text)
+                a.xy = (x, y)
+                a.set_visible(True)
+                fig.canvas.draw_idle()
+
+        else:
+            a.set_visible(False)
+            fig.canvas.draw_idle()
+
 
 
 """
@@ -149,8 +180,10 @@ Returns images for a given iteration, from the given model data.
 def iteration_images(iteration, all_model_states):
     fig.canvas.set_window_title("Iteration: {}".format(iteration))
     for i in range(len(models)):
-        model_state = all_model_states[i][iteration]
-        images[i].set_data(model_state)
+        image, info = all_model_states[i][iteration]
+        images[i].set_data(image)
+        model_data[i] = info
+
     return tuple(images)
 
 
@@ -201,6 +234,8 @@ def animate_models(num_iterations):
             iteration += 10
 
     fig.canvas.mpl_connect("key_press_event", key_press_handler)
+    fig.canvas.mpl_connect("motion_notify_event", hover)
+
     anim = animation.FuncAnimation(fig, next_iteration, frames=None,
                                    interval=300)
     fig.tight_layout()
@@ -219,7 +254,7 @@ def generate_data(num_iterations):
         for iteration in range(num_iterations):
             print("Iteration {0}".format(iteration + 1))
             models[i].step()
-            model_states.append(get_seat_blocking(models[i], model_utilities[i]).T)
+            model_states.append(get_model_state(models[i], model_utilities[i]))
         all_model_states.append(model_states)
     # Save all model state data.
     with open(MODEL_DATA_PATH, "wb") as f:
