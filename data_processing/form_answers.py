@@ -23,7 +23,7 @@ def load(name):
 
 
 def get_int_answers(data, question_key, leq_5=False):
-    """Return int data with given question key.
+    """Return a list of int data with given question key.
 
     If `leq_5` each int must be less than or equal to 5.
     """
@@ -32,7 +32,7 @@ def get_int_answers(data, question_key, leq_5=False):
     answers = map(int, answers)
     if leq_5:
         answers = filter(lambda x: x <= 5, answers)
-    return answers
+    return list(answers)
 
 
 def answers_and_plot(data, question_key, bins, plot=False, title=None,
@@ -44,7 +44,7 @@ def answers_and_plot(data, question_key, bins, plot=False, title=None,
     """
     answers = get_int_answers(data, question_key, leq_5=leq_5)
     if plot:
-        plt.hist(list(answers), bins=bins)
+        plt.hist(answers, bins=bins)
         if title:
             plt.title(title)
         plt.show()
@@ -55,25 +55,23 @@ def get_seats(data, key, plot=False, title=None):
     """Get seats location matrix using the given question key.
 
     NOTE: aisles are not considered in the returned matrix.
-    This function also returns the amount of missing entries.
     If `plot`, plot a histogram of the location matrix.
     """
     room = np.zeros((13, 14 + 6 + 1))
-    missing_data = 0
     for student in data:
         location = student.get(key)
         if location:
             i, j = list(map(int, location.split(",", 1)))
             room[i][j] += 1
-        else:
-            missing_data += 1
+    aisle_index = 6
+    room = np.delete(room, aisle_index, 1)
     if plot:
         plt.imshow(room)
         plt.colorbar()
         if title:
             plt.title(title)
         plt.show()
-    return room, missing_data
+    return room
 
 
 # Questionnaire functions #####################################################
@@ -104,9 +102,8 @@ def know_neighbour(data, plot=False):
     """
     left = get_int_answers(data, "knowleft", leq_5=True)
     right = get_int_answers(data, "knowright", leq_5=True)
-    both = list(left) + list(right)
     if plot:
-        plt.hist(list(both), bins=6)
+        plt.hist(left + right, bins=6)
         plt.title("Familiarity to immediate neighbours.")
         plt.show()
     return left, right
@@ -148,7 +145,7 @@ def get_actual_seats(data, plot=False):
     If `plot`, plot returned data using imshow.
     """
     return get_seats(data, "seatlocation", plot=plot,
-                     title="Where students are sitting.")[0]
+                     title="Where students are sitting.")
 
 
 def get_preferred_seats__some_unavailable(data, plot=False):
@@ -159,7 +156,7 @@ def get_preferred_seats__some_unavailable(data, plot=False):
     """
     return get_seats(data, "seatpreffered", plot=plot,
                      title="Where students would prefer to sit. \n" +
-                           "For question with unavailable (black) seats.")[0]
+                           "For question with unavailable (black) seats.")
 
 
 if __name__ == "__main__":
