@@ -1,8 +1,13 @@
 import json
+import os
 import networkx as nx
+import numpy as np
+
+dir_path = os.path.dirname(os.path.realpath(__file__))
+data_path = os.path.join(dir_path, "../data")
 
 # load json data
-with open('test-form.json') as json_data:
+with open(os.path.join(data_path, 'fri-form.json')) as json_data:
     data = json.load(json_data)
 
 # create variable to store data
@@ -10,14 +15,14 @@ list_degree = []
 
 # iterate over json data and append degrees
 for i in data:
-    if int(i['coursefriends']) > len(data):
-        list_degree.append(len(data))
-    else:
-        list_degree.append(int(i['coursefriends']))
+    try:
+        if int(i['coursefriends']) > len(data):
+            list_degree.append(len(data))
+        else:
+            list_degree.append(int(i['coursefriends']))
+    except:
+        pass
 
-# create configuration model (aka social network)
-G = nx.random_degree_sequence_graph(list_degree)
-
-# plot graph
-nx.draw_networkx(G)
-plt.show()
+print(list_degree)
+print("length of list = " + str(len(list_degree)))
+print(np.mean(np.asarray(list_degree)))
