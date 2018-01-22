@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,6 +9,10 @@ import numpy as np
 Function for extracting and plotting data from the questionnaire.
 
 Functions are in the order they appear in the questionnaire.
+
+Usage as a script to visualize a form's responses:
+
+    python3 form_answers.py fri-form.json
 """
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -160,7 +165,7 @@ def get_preferred_seats__some_unavailable(data, plot=False):
 
 
 if __name__ == "__main__":
-    data = load("fri-form.json")
+    data = load(sys.argv[1])
     crosscosts(data, plot=True)
     course_friends(data, plot=True)
     know_neighbour(data, plot=True)
