@@ -2,6 +2,7 @@ import json
 import os
 import networkx as nx
 import numpy as np
+import matplotlib.pyplot as plt
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 data_path = os.path.join(dir_path, "../data")
@@ -26,3 +27,7 @@ for i in data:
 print(list_degree)
 print("length of list = " + str(len(list_degree)))
 print(np.mean(np.asarray(list_degree)))
+
+plt.hist(list_degree)
+plt.yscale("log")
+plt.show()
