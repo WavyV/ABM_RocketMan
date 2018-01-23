@@ -84,59 +84,75 @@ class Form extends React.Component {
         />
 
         {this.renderQuestion(
-           `When you sat down in your seat initially, how many people did you
+          `When you sat down in your seat initially, how many people did you
            have to pass in your row to get to your seat?`,
-           null, 'crosscost',
+          null, 'crosscost',
         )}
 
         {this.renderQuestion(
-           `Of the students attending this course, with how many people do you
+          `Of the students attending this course, with how many people do you
            consider yourself familiar?`,
           '(Cambridge dictionary: familiar, to know something or someone well.)',
           'coursefriends',
         )}
 
         {this.render1To5(
-           `If someone is sitting immediately to your left, how familiar are you
+          `If someone is sitting immediately to your left, how familiar are you
            with them?`,
-           `(0 = Nobody immediately left. 1 = Not familiar. 2 = Slightly
+          `(0 = Nobody immediately left. 1 = Not familiar. 2 = Slightly
            familiar. 3 = Somewhat familiar. 4 = Familiar. 5 = Very familiar.)`,
-           'knowleft',
-           true,
+          'knowleft',
+          true,
         )}
 
         {this.render1To5(
-           `If someone is sitting immediately to your right, how familiar are
+          `If someone is sitting immediately to your right, how familiar are
            you with them?`,
-           `(0 = Nobody immediately right. 1 = Not familiar. 2 = Slightly
+          `(0 = Nobody immediately right. 1 = Not familiar. 2 = Slightly
            familiar. 3 = Somewhat familiar. 4 = Familiar. 5 = Very familiar.)`,
-           'knowright',
-           true,
+          'knowright',
+          true,
         )}
 
         {this.render1To5(
-           `On entering a lecture room how important is it to you to sit next to
+          `On entering a lecture room how important is it to you to sit next to
            someone with whom you are familiar?`,
           `(1 = Not important. 2 = Slightly important. 3 = Somewhat important. 4
-          = Important. 5 = Very important.)`,
+           = Important. 5 = Very important.)`,
           'sitnexttofamiliar',
         )}
 
         {this.render1To5(
           `Consider entering a lecture room where you don't know anyone, how
-          important to you is it to sit next to another person?`,
+           important to you is it to sit next to another person?`,
           `(1 = Not important. 2 = Slightly important. 3 = Somewhat important. 4
-          = Important. 5 = Very important.)`,
+           = Important. 5 = Very important.)`,
           'sitnexttoperson',
         )}
 
-        <Slider
-          question="Estimate the ratio of importance to you of sitting
-                    next to a friend versus sitting in your preferred seat?"
-          option_a="Next to a friend"
-          option_b="In your preferred seat"
-          lift={slider => this.handleInput(slider, 'slider')}
-        />
+        {this.render1To5(
+          `On entering a lecture room how important is it to you to find a seat
+           that is in a good physical location?`,
+          `(1 = Not important. 2 = Slightly important. 3 = Somewhat important. 4
+           = Important. 5 = Very important.)`,
+          'sitgoodlocation',
+        )}
+
+        {this.render1To5(
+          `On entering a lecture room how important is it to you to find a seat
+           that is easy to get to?`,
+          `(1 = Not important. 2 = Slightly important. 3 = Somewhat important. 4
+           = Important. 5 = Very important.)`,
+          'sitnexttoperson',
+        )}
+
+        {/* <Slider
+            question="Estimate the ratio of importance to you of sitting
+            next to a friend versus sitting in your preferred seat?"
+            option_a="Next to a friend"
+            option_b="In your preferred seat"
+            lift={slider => this.handleInput(slider, 'slider')}
+            /> */}
 
         <Auditorium
           question="Where is your preferred seat located if this is an empty
