@@ -143,7 +143,7 @@ class Form extends React.Component {
            that is easy to get to?`,
           `(1 = Not important. 2 = Slightly important. 3 = Somewhat important. 4
            = Important. 5 = Very important.)`,
-          'sitnexttoperson',
+          'siteasyreach',
         )}
 
         {/* <Slider
