@@ -119,9 +119,9 @@ def social_weighting(data, plot=False):
 
     If `plot`, plot a histogram of the returned data.
     """
-    return answers_and_plot(data, "slider", bins=20, plot=plot,
-                            title="Sit next to friend / preferred seat. \n" +
-                                  "Only want to sit next to a friend = 100.")
+    slider = answers_and_plot(data, "slider", bins=20, plot=plot,
+                              title="Sit next to friend / preferred seat. \n" +
+                                    "Only want to sit next to a friend = 100.")
 
 
 def importance_of_familiarity(data, plot=False):
@@ -166,11 +166,11 @@ def get_preferred_seats__some_unavailable(data, plot=False):
 
 if __name__ == "__main__":
     data = load(sys.argv[1])
-    crosscosts(data, plot=True)
-    course_friends(data, plot=True)
-    know_neighbour(data, plot=True)
-    social_weighting(data, plot=True)
-    importance_of_familiarity(data, plot=True)
-    importance_of_person(data, plot=True)
-    get_actual_seats(data, plot=True)
-    get_preferred_seats__some_unavailable(data, plot=True)
+    # crosscosts(data, plot=True)
+    # course_friends(data, plot=True)
+    # know_neighbour(data, plot=True)
+    # social_weighting(data, plot=True)
+    # importance_of_familiarity(data, plot=True)
+    # importance_of_person(data, plot=True)
+    # get_actual_seats(data, plot=True)
+    get_preferred_seats__some_unavailable(data, plot=False)
