@@ -34,7 +34,7 @@ Returns:
                 - The level of "happiness" of each student is represented by positive values (the larger the happier)
     info: 3D array comprising the 4 matrices 'seat_utilities', 'student_IDs', 'student_sociabilities' and 'initial_happiness'
 """
-def get_model_state(model, utilities):
+def get_model_state(model):
     image = -8*np.ones((model.grid.height, model.grid.width))
     info = np.zeros((model.grid.height, model.grid.width, 4))
 
@@ -43,25 +43,15 @@ def get_model_state(model, utilities):
         for agent in content:
             if type(agent) is Seat:
                 # save seat utility
-                info[y,x,0] = model.classroom.seats[x,y]
+                info[y,x,0] = model.classroom.pos_utilities[x,y]
                 if agent.student is None:
                     # seat is available. Determine level of blocking
-                    image[y,x] = -10-agent.get_stand_up_cost()
+                    image[y,x] = -10 + agent.get_accessibility()
                 else:
-                    # seat is occupied. Determine happiness of the student
-                    # (depending on the utility component used in the given
-                    # model)
+                    # seat is occupied. Set value based on the student's happiness
                     image[y,x] = 10
-
-                    if utilities[0]:
-                        image[y,x] += agent.get_position_utility()
-                    if utilities[1] and utilities[2]:
-                        image[y,x] += agent.get_social_utility(agent.student)
-                    else:
-                        if utilities[1]:
-                            image[y,x] += agent.get_social_utility(agent.student, use_friendship=False)
-                        if utilities[2]:
-                            image[y,x] += agent.get_social_utility(agent.student, use_sociability=False)
+                    u_friendship, u_sociability = agent.get_social_utility(agent.student)
+                    image[y,x] += agent.get_position_utility() + u_friendship + u_sociability
 
                     # save student's properties
                     info[y,x,1] = agent.student.unique_id
@@ -82,6 +72,12 @@ seed = 0
 # The classroom layout
 blocks = [10, 15, 10]
 num_rows = 20
+width = sum(blocks) + len(blocks) - 1
+entrances = [(width-1, 0)]
+pos_utilities = np.zeros((width, num_rows))
+
+classroom = ClassroomDesign(blocks, num_rows, pos_utilities, entrances)
+
 
 # The social network of Students
 cliques = 60
@@ -90,18 +86,21 @@ max_num_agents = cliques * clique_size
 prob_linked_cliques = 0.3
 social_network = nx.to_numpy_matrix(nx.relaxed_caveman_graph(cliques, clique_size, prob_linked_cliques, seed))
 
+# The coefficients for the utility function [position, friendship, sociability, accessibility]
+coefs_position_accessibility = [1, 0, 0, 0.1]
+coefs_sociability = [1, 0, 1, 0.1]
+coefs_friendship = [1, 1, 1, 0.1]
+
 
 """
 Initialize the models
 """
-model_random = ClassroomModel(max_num_agents, num_rows, blocks, seed, False, False)
-model_sociability = ClassroomModel(max_num_agents, num_rows, blocks, seed, True, False)
-model_friendship = ClassroomModel(max_num_agents, num_rows, blocks, seed, True, False, social_network)
+model_pos_access = ClassroomModel(max_num_agents, classroom, coefs_position_accessibility)
+model_sociability = ClassroomModel(max_num_agents, classroom, coefs_sociability)
+model_friendship = ClassroomModel(max_num_agents, classroom, coefs_friendship, social_network=social_network)
 
-models = [model_random, model_sociability, model_friendship]
-model_names = ["blocking", "blocking + sociability", "blocking + sociability + friendship"]
-# specify which model uses which utilities (location, sociability, friendship)
-model_utilities = [[True,False,False],[True,True,True],[True,True,True]]
+models = [model_pos_access, model_sociability, model_friendship]
+model_names = ["position + accessibility", "position + accessibility + sociability", "position + accessibility + sociability + friendship"]
 
 
 """
@@ -118,7 +117,7 @@ annotes = []
 
 for i, ax in enumerate(fig.axes):
 
-    image, info = get_model_state(models[i], model_utilities[i])
+    image, info = get_model_state(models[i])
     images.append(ax.imshow(image, vmin=min_value, vmax=max_value, cmap = "RdYlGn", interpolation=None))
     ax.axis("off")
     ax.set_title(model_names[i])
@@ -254,7 +253,7 @@ def generate_data(num_iterations):
         for iteration in range(num_iterations):
             print("Iteration {0}".format(iteration + 1))
             models[i].step()
-            model_states.append(get_model_state(models[i], model_utilities[i]))
+            model_states.append(get_model_state(models[i]))
         all_model_states.append(model_states)
     # Save all model state data.
     with open(MODEL_DATA_PATH, "wb") as f:
