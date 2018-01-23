@@ -77,6 +77,12 @@ class Form extends React.Component {
     return (
       <div className="form">
 
+        <Auditorium
+          question="Where are you seated?"
+          seats={SEATS}
+          lift={seat => this.handleInput(seat, 'seatlocation')}
+        />
+
         {this.renderQuestion(
            `When you sat down in your seat initially, how many people did you
            have to pass in your row to get to your seat?`,
@@ -133,15 +139,9 @@ class Form extends React.Component {
         />
 
         <Auditorium
-          question="Where are you seated?"
+          question="Where is your preferred seat located if this is an empty
+                   lecture theatre?"
           seats={SEATS}
-          lift={seat => this.handleInput(seat, 'seatlocation')}
-        />
-
-        <Auditorium
-          question="Where would you sit in this lecture room?"
-          seats={SEATS}
-          taken={TAKEN}
           lift={seat => this.handleInput(seat, 'seatpreffered')}
         />
 

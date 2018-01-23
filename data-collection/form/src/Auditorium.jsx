@@ -93,7 +93,11 @@ class Auditorium extends React.Component {
           {this.props.taken ? 'Black seats are taken' : null}
         </div>
         <div style={auditoriumStyle}>
-          <div style={{ textAlign: 'center' }}>LECTURER</div>
+          <div style={{ display: 'flex' }}>
+            <div style={{ flexGrow: 1 }}></div>
+            <div style={{ flexGrow: 1, textAlign: 'right' }}>LECTURER</div>
+            <div style={{ flexGrow: 1, textAlign: 'right' }}>ENTRANCE</div>
+          </div>
           {rows}
           <div style={{ textAlign: 'center' }}>BACK WALL</div>
         </div>
