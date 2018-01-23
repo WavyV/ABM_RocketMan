@@ -36,54 +36,64 @@ class Student(Agent):
 
     """
     The seat selection procedure
+
+    Args:
+        seat_pos: predetermined position of the seat to choose. If this parameter is specified utilities are ignored.
+        old_seat: current seat of the student making the seating decision. If this parameter is specified the student is enabled to move to a seat with higher utility than his current one.
     """
-    def choose_seat(self, old_seat=None):
+    def choose_seat(self, seat_pos=None, old_seat=None):
 
-        # determine all possible seats to choose from
-        seat_options = []
-        for cell in self.model.grid.coord_iter():
-            content, x, y = cell
-            for agent in content:
-                if type(agent) is Seat and agent.student is None:
-                    seat_options.append(agent)
+        if seat_pos is None:
+            # determine all possible seats to choose from
+            seat_options = []
+            for cell in self.model.grid.coord_iter():
+                content, x, y = cell
+                for agent in content:
+                    if type(agent) is Seat and agent.student is None:
+                        seat_options.append(agent)
 
 
-        if len(seat_options) == 0:
-            print("No empty seats!")
+            if len(seat_options) == 0:
+                print("No empty seats!")
 
-        else:
-            if self.model.random_seat_choice:
-                # pick one randomly
-                seat_choice = random.choice(seat_options)
             else:
-                if old_seat is None:
-                    # pick seat with highest utility (if multiple seats are optimal, choose one of them randomly)
-                    seat_utilities = [seat.get_total_utility(self) for seat in seat_options]
-                    seat_choice = random.choice(np.array(seat_options)[np.where(seat_utilities == np.max(seat_utilities))])
-
-                    # move to the selected seat
-                    seat_choice.student = self
-                    self.model.grid.move_agent(self, seat_choice.pos)
-                    self.initial_happiness = np.max(seat_utilities) - seat_choice.get_accessibility()
-                    self.seated = True
-
+                if self.model.random_seat_choice:
+                    # pick one randomly
+                    seat_choice = random.choice(seat_options)
                 else:
-                    """ only used if 'will_to_change_seat' is enabled """
-                    # pick seat with highest utiltiy (if multiple seats are optimal, choose one of them randomly)
-                    # include cost to get away from the old seat
-                    seat_utilities = [seat.get_total_utility(self) - old_seat.get_stand_up_cost() for seat in seat_options]
-
-                    if np.max(seat_utilities) - old_seat.get_total_utility(self) > self.moving_threshold:
-                        # if the difference in utility between the current seat and another available seat exceeds the threshold, move to one of the optimal ones
+                    if old_seat is None:
+                        # pick seat with highest utility (if multiple seats are optimal, choose one of them randomly)
+                        seat_utilities = [seat.get_total_utility(self) for seat in seat_options]
                         seat_choice = random.choice(np.array(seat_options)[np.where(seat_utilities == np.max(seat_utilities))])
 
-                        # move to the selected seat
-                        self.model.grid.move_agent(self, seat_choice.pos)
-                        self.initial_happiness = np.max(seat_utilities) - seat_choice.get_accessibility()
-                        seat_choice.student = self
+                    else:
+                        """ only used if 'will_to_change_seat' is enabled """
+                        # pick seat with highest utiltiy (if multiple seats are optimal, choose one of them randomly)
+                        # include cost to get away from the old seat
+                        seat_utilities = [seat.get_total_utility(self) - old_seat.get_stand_up_cost() for seat in seat_options]
 
-                        # make old seat available again
-                        agent.occupied = False
+                        if np.max(seat_utilities) - old_seat.get_total_utility(self) > self.moving_threshold:
+                            # if the difference in utility between the current seat and another available seat exceeds the threshold, move to one of the optimal ones
+                            seat_choice = random.choice(np.array(seat_options)[np.where(seat_utilities == np.max(seat_utilities))])
+
+        else:
+            # get the seat object at the predetermined position
+            for agent in self.model.grid.get_cell_list_contents(seat_pos):
+                if type(agent) is Seat and agent.student is None:
+                    seat_choice = agent
+
+        if seat_choice is not None:
+            # seat has been selected
+            if old_seat is not None:
+                # make seat available again
+                old_seat.student = None
+
+            # move to the selected seat
+            seat_choice.student = self
+            self.model.grid.move_agent(self, seat_choice.pos)
+            self.initial_happiness = np.max(seat_utilities) - seat_choice.get_accessibility()
+            self.seated = True
+
 
 
 
@@ -106,7 +116,7 @@ class Student(Agent):
                 content = self.model.grid.get_cell_list_contents(self.pos)
                 for agent in content:
                     if type(agent) is Seat:
-                        self.choose_seat(agent)
+                        self.choose_seat(old_seat=agent)
 
 
 class Seat(Agent):
@@ -346,6 +356,23 @@ class ClassroomModel(Model):
             self.grid.place_agent(student, initial_pos)
 
         self.schedule.step()
+
+    """
+    Advance the model by one step. If the maximum student number is not reached yet, create a new student and place him at the given position.
+
+    Args:
+        seat_pos: position at which the new student should be seated
+    """
+    def step_predetermined_seating(seat_pos):
+
+        n = self.schedule.get_agent_count()
+        if n < self.max_num_agents:
+            # if max student count is not reached, create student
+            student = Student(n, self)
+            self.schedule.add(student)
+
+            # place new student at the predetermined seat
+            student.choose_seat(seat_pos)
 
 
 
