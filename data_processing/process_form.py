@@ -1,3 +1,4 @@
+import json
 import sys
 
 import matplotlib.pyplot as plt
@@ -51,10 +52,35 @@ def get_seat_stats(seats, taken, center=(3, 12), max_radius=5,
     return total_choices_at_radius, avg_choices_per_seat
 
 
-if __name__ == "__main__":
-    data = form_answers.load(sys.argv[1])
+def plot_seat_radii(data):
+    """Plot seat locations and radius stats."""
     seats = form_answers.get_preferred_seats__some_unavailable(data)
     taken = taken_seats.taken_seats
     seat_stats = get_seat_stats(seats, taken, exclude_taken=True, plot=True)
     print("Seat choices at radius: {}".format(seat_stats[0]))
     print("Seat choices at radius / seats at radius: {}".format(seat_stats[1]))
+
+
+def beta_ratios(data):
+    """Get the average ratio of the β coefficients."""
+
+    def ratio(form):
+        all_fields = ["sitnexttofamiliar", "sitnexttoperson", "sitgoodlocation", "siteasyreach"]
+        all_fields = list(map(lambda key: form.get(key), all_fields))
+
+        # Filter out bad results.
+        for field in all_fields:
+            if field is None or len(field) != 1:
+                return None
+
+        # Map to int and return each field as a fraction of total.
+        all_fields = list(map(int, all_fields))
+        return list(map(lambda field: field / sum(all_fields), all_fields))
+
+    return list(map(ratio, data))
+
+
+if __name__ == "__main__":
+    data = form_answers.load(sys.argv[1])
+    plot_seat_radii(data)
+    print(json.dumps(beta_ratios(data), indent=4))

@@ -144,6 +144,26 @@ def importance_of_person(data, plot=False):
                             leq_5=True)
 
 
+def importance_of_location(data, plot=False):
+    """Return a list of the importance of sitting in preferred location.
+
+    If `plot`, plot a histogram of the returned data.
+    """
+    return answers_and_plot(data, "sitgoodlocation", bins=5, plot=plot,
+                            title="Importance of sitting in preferred location.",
+                            leq_5=True)
+
+
+def importance_of_accessibility(data, plot=False):
+    """Return a list of the importance of sitting in easy to reach seat.
+
+    If `plot`, plot a histogram of the returned data.
+    """
+    return answers_and_plot(data, "siteasyreach", bins=5, plot=plot,
+                            title="Importance of sitting in an accessible seat.",
+                            leq_5=True)
+
+
 def get_actual_seats(data, plot=False):
     """Returns a matrix of where students said they sat.
 
@@ -153,24 +173,24 @@ def get_actual_seats(data, plot=False):
                      title="Where students are sitting.")
 
 
-def get_preferred_seats__some_unavailable(data, plot=False):
+def get_preferred_seats(data, plot=False):
     """Returns a matrix of students preferred seats.
 
-    From the question where some seats are unavailable (black).
     If `plot`, plot returned data using imshow.
     """
     return get_seats(data, "seatpreffered", plot=plot,
-                     title="Where students would prefer to sit. \n" +
-                           "For question with unavailable (black) seats.")
+                     title="Where students would prefer to sit.")
 
 
 if __name__ == "__main__":
     data = load(sys.argv[1])
-    # crosscosts(data, plot=True)
-    # course_friends(data, plot=True)
-    # know_neighbour(data, plot=True)
-    # social_weighting(data, plot=True)
-    # importance_of_familiarity(data, plot=True)
-    # importance_of_person(data, plot=True)
-    # get_actual_seats(data, plot=True)
-    get_preferred_seats__some_unavailable(data, plot=False)
+    crosscosts(data, plot=True)
+    course_friends(data, plot=True)
+    know_neighbour(data, plot=True)
+    social_weighting(data, plot=True)
+    importance_of_familiarity(data, plot=True)
+    importance_of_person(data, plot=True)
+    importance_of_location(data, plot=True)
+    importance_of_accessibility(data, plot=True)
+    get_actual_seats(data, plot=True)
+    get_preferred_seats(data, plot=True)
