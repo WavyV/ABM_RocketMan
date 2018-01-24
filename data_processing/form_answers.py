@@ -183,7 +183,9 @@ def get_preferred_seats(data, plot=False):
 
 
 if __name__ == "__main__":
-    data = load(sys.argv[1])
+    data = []
+    for filename in sys.argv[1:]:
+        data += load(filename)
     crosscosts(data, plot=True)
     course_friends(data, plot=True)
     know_neighbour(data, plot=True)

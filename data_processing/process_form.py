@@ -2,6 +2,7 @@ import json
 import sys
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 import form_answers
 import taken_seats
@@ -54,7 +55,7 @@ def get_seat_stats(seats, taken, center=(3, 12), max_radius=5,
 
 def plot_seat_radii(data):
     """Plot seat locations and radius stats."""
-    seats = form_answers.get_preferred_seats__some_unavailable(data)
+    seats = form_answers.get_preferred_seats(data)
     taken = taken_seats.taken_seats
     seat_stats = get_seat_stats(seats, taken, exclude_taken=True, plot=True)
     print("Seat choices at radius: {}".format(seat_stats[0]))
@@ -70,17 +71,25 @@ def beta_ratios(data):
 
         # Filter out bad results.
         for field in all_fields:
-            if field is None or len(field) != 1:
+            if field is None or (isinstance(field, str) and len(field) != 1):
                 return None
 
         # Map to int and return each field as a fraction of total.
         all_fields = list(map(int, all_fields))
         return list(map(lambda field: field / sum(all_fields), all_fields))
 
-    return list(map(ratio, data))
+    # This is a list of the percentage of each β / sum(β_i).
+    # Example of a list with one response.
+    # [ [β1/sum(β1..β4), β2/sum(β1..β4), β3/sum(β1..β4), β4/sum(β1..β4)]]
+    ratios = list(filter(lambda x: x is not None, map(ratio, data)))
+
+    # The means of above values.
+    return np.mean(ratios, axis=0).tolist()
 
 
 if __name__ == "__main__":
-    data = form_answers.load(sys.argv[1])
+    data = []
+    for filename in sys.argv[1:]:
+        data += form_answers.load(filename)
     plot_seat_radii(data)
-    print(json.dumps(beta_ratios(data), indent=4))
+    print("Average ratios: {}".format(json.dumps(beta_ratios(data), indent=4)))
