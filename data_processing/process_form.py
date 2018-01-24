@@ -88,9 +88,9 @@ def beta_ratios(data):
     ratios = list(filter(lambda x: x is not None, map(ratio, data)))
 
     # The average of above values. [mean1, mean2, mean3, mean4]
-    avg_betas = np.mean(ratios, axis=0).tolist()
+    avg_betas = np.mean(ratios, axis=0)
     scaled_avg_betas = map(lambda x: x / sum(avg_betas), avg_betas)
-    return scaled_avg_betas
+    return list(scaled_avg_betas)
 
 
 if __name__ == "__main__":
