@@ -12,7 +12,7 @@ def get_seat_stats(seats, taken, center=(3, 12), max_radius=5,
                    exclude_taken=True, plot=False):
     """Return a tuple(total_choices, prob_seat).
 
-    NOTE: Arguments seats and taken should exclude aisles!
+    NOTE: Arguments `seats` and `taken` should exclude aisles!
 
     total_choices is the total amount of seat choices at each radius.
     prob_seat is this value divided by the amount of seats at that radius.
@@ -63,13 +63,13 @@ def plot_seat_radii(data):
 
 
 def beta_ratios(data):
-    """Get the average ratio of the β coefficients."""
+    """Get the average β coefficients."""
 
     def ratio(form):
         all_fields = ["sitnexttofamiliar", "sitnexttoperson", "sitgoodlocation", "siteasyreach"]
         all_fields = list(map(lambda key: form.get(key), all_fields))
 
-        # Filter out bad results.
+        # Filter out invalid results.
         for field in all_fields:
             if field is None or (isinstance(field, str) and len(field) != 1):
                 return None
@@ -78,13 +78,19 @@ def beta_ratios(data):
         all_fields = list(map(int, all_fields))
         return list(map(lambda field: field / sum(all_fields), all_fields))
 
-    # This is a list of the percentage of each β / sum(β_i).
-    # Example of a list with one response.
-    # [ [β1/sum(β1..β4), β2/sum(β1..β4), β3/sum(β1..β4), β4/sum(β1..β4)]]
+    # [
+    #   [β1/sum(β1..β4), β2/sum(β1..β4), β3/sum(β1..β4), β4/sum(β1..β4)],
+    #     .
+    #     .
+    #     .
+    #   [...]
+    # ]
     ratios = list(filter(lambda x: x is not None, map(ratio, data)))
 
-    # The means of above values.
-    return np.mean(ratios, axis=0).tolist()
+    # The average of above values. [mean1, mean2, mean3, mean4]
+    avg_betas = np.mean(ratios, axis=0).tolist()
+    scaled_avg_betas = map(lambda x: x / sum(avg_betas), avg_betas)
+    return scaled_avg_betas
 
 
 if __name__ == "__main__":
