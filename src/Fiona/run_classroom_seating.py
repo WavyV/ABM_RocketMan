@@ -50,7 +50,7 @@ def get_model_state(model):
                 else:
                     # seat is occupied. Set value based on the student's happiness
                     image[y,x] = 1
-                    image[y,x] += agent.get_total_utility(agent.student) - model.coefs[3]*agent.get_accessibility()
+                    image[y,x] += agent.get_happiness(agent.student)
 
                     # save student's properties
                     info[y,x,1] = agent.student.unique_id
@@ -94,9 +94,9 @@ coefs_friendship = [1, 1, 1, 1]
 """
 Initialize the models
 """
-model_pos_access = ClassroomModel(max_num_agents, classroom, coefs_position_accessibility)
-model_sociability = ClassroomModel(max_num_agents, classroom, coefs_sociability)
-model_friendship = ClassroomModel(max_num_agents, classroom, coefs_friendship, social_network=social_network)
+model_pos_access = ClassroomModel(classroom, coefs_position_accessibility)
+model_sociability = ClassroomModel(classroom, coefs_sociability)
+model_friendship = ClassroomModel(classroom, coefs_friendship, social_network=social_network)
 
 models = [model_pos_access, model_sociability, model_friendship]
 model_names = ["position + accessibility", "position + accessibility + sociability", "position + accessibility + sociability + friendship"]
