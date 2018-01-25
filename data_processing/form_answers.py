@@ -1,6 +1,5 @@
 import json
 import os
-import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -40,7 +39,7 @@ def get_int_answers(data, question_key, leq_5=False):
     return list(answers)
 
 
-def answers_and_plot(data, question_key, bins, plot=False, title=None,
+def answers_and_hist(data, question_key, bins, plot=False, title=None,
                      leq_5=False):
     """Return a list of int data with given key.
 
@@ -48,12 +47,13 @@ def answers_and_plot(data, question_key, bins, plot=False, title=None,
     For `leq_5` see the function `get_int_answers`.
     """
     answers = get_int_answers(data, question_key, leq_5=leq_5)
+    hist = plt.hist(answers, bins=bins)
     if plot:
-        plt.hist(answers, bins=bins)
         if title:
             plt.title(title)
         plt.show()
-    return answers
+    plt.gcf().clear()
+    return answers, hist
 
 
 def get_seats(data, key, plot=False, title=None):
@@ -83,20 +83,20 @@ def get_seats(data, key, plot=False, title=None):
 
 
 def crosscosts(data, plot=False):
-    """Return a list of the crosscosts.
+    """Return a list of the crosscosts, and the histogram data.
 
-    If `plot`, plot a histogram of the returned data.
+    If `plot`, plot the histogram of the returned data.
     """
-    return answers_and_plot(data, "crosscost", bins=8, plot=plot,
+    return answers_and_hist(data, "crosscost", bins=8, plot=plot,
                             title="Amount of crosscosts.")
 
 
 def course_friends(data, plot=False):
-    """Return a list of the amount of course friends people have.
+    """Return the amount of course friends people have, and the histogram data.
 
-    If `plot`, plot a histogram of the returned data.
+    If `plot`, plot the histogram of the returned data.
     """
-    return answers_and_plot(data, "coursefriends", bins=20, plot=plot,
+    return answers_and_hist(data, "coursefriends", bins="auto", plot=plot,
                             title="Amount of course friends.")
 
 
@@ -115,52 +115,56 @@ def know_neighbour(data, plot=False):
 
 
 def social_weighting(data, plot=False):
-    """Return a list of the values of the social weighting slider.
+    """Return a list of the social slider values, and the histogram data.
 
-    If `plot`, plot a histogram of the returned data.
+    If `plot`, plot the histogram of the returned data.
     """
-    slider = answers_and_plot(data, "slider", bins=20, plot=plot,
-                              title="Sit next to friend / preferred seat. \n" +
-                                    "Only want to sit next to a friend = 100.")
+    return answers_and_hist(data, "slider", bins=20, plot=plot,
+                            title="Sit next to friend / preferred seat. \n" +
+                                  "Only want to sit next to a friend = 100.")
 
 
 def importance_of_familiarity(data, plot=False):
-    """Return a list of the importance of sitting next to someone familiar.
+    """Return a list of the importance of sitting next to someone familiar, and the
+    histogram data.
 
-    If `plot`, plot a histogram of the returned data.
+    If `plot`, plot the histogram of the returned data.
     """
-    return answers_and_plot(data, "sitnexttofamiliar", bins=5, plot=plot,
+    return answers_and_hist(data, "sitnexttofamiliar", bins=5, plot=plot,
                             title="Importance of sitting next to someone " +
                                   "familiar.", leq_5=True)
 
 
 def importance_of_person(data, plot=False):
-    """Return a list of the importance of sitting next to a person.
+    """Return a list of the importance of sitting next to a person, and the
+       histogram data.
 
-    If `plot`, plot a histogram of the returned data.
+    If `plot`, plot the histogram of the returned data.
     """
-    return answers_and_plot(data, "sitnexttoperson", bins=5, plot=plot,
+    return answers_and_hist(data, "sitnexttoperson", bins=5, plot=plot,
                             title="Importance of sitting next to a person.",
                             leq_5=True)
 
 
 def importance_of_location(data, plot=False):
-    """Return a list of the importance of sitting in preferred location.
+    """Return a list of the importance of sitting in preferred location, and the
+    histogram data.
 
-    If `plot`, plot a histogram of the returned data.
+    If `plot`, plot the histogram of the returned data.
     """
-    return answers_and_plot(data, "sitgoodlocation", bins=5, plot=plot,
-                            title="Importance of sitting in preferred location.",
+    return answers_and_hist(data, "sitgoodlocation", bins=5, plot=plot,
+                            title="Importance of sitting in preferred seat.",
                             leq_5=True)
 
 
 def importance_of_accessibility(data, plot=False):
-    """Return a list of the importance of sitting in easy to reach seat.
+    """Return a list of the importance of sitting in easy to reach seat, and
+    the histogram data
 
-    If `plot`, plot a histogram of the returned data.
+    If `plot`, plot the histogram of the returned data.
     """
-    return answers_and_plot(data, "siteasyreach", bins=5, plot=plot,
-                            title="Importance of sitting in an accessible seat.",
+    return answers_and_hist(data, "siteasyreach", bins=5, plot=plot,
+                            title="Importance of sitting in accessible seat.",
                             leq_5=True)
 
 
@@ -182,17 +186,18 @@ def get_preferred_seats(data, plot=False):
                      title="Where students would prefer to sit.")
 
 
+FILENAMES = ["fri-form.json", "wed_24.json"]
+DATA = list(map(load, FILENAMES))
+ALL_DATA = list(sum(DATA, []))
+
 if __name__ == "__main__":
-    data = []
-    for filename in sys.argv[1:]:
-        data += load(filename)
-    crosscosts(data, plot=True)
-    course_friends(data, plot=True)
-    know_neighbour(data, plot=True)
-    social_weighting(data, plot=True)
-    importance_of_familiarity(data, plot=True)
-    importance_of_person(data, plot=True)
-    importance_of_location(data, plot=True)
-    importance_of_accessibility(data, plot=True)
-    get_actual_seats(data, plot=True)
-    get_preferred_seats(data, plot=True)
+    crosscosts(ALL_DATA, plot=True)
+    answers, hist = course_friends(ALL_DATA, plot=True)
+    know_neighbour(ALL_DATA, plot=True)
+    social_weighting(ALL_DATA, plot=True)
+    importance_of_familiarity(ALL_DATA, plot=True)
+    importance_of_person(ALL_DATA, plot=True)
+    importance_of_location(ALL_DATA, plot=True)
+    importance_of_accessibility(ALL_DATA, plot=True)
+    get_actual_seats(ALL_DATA, plot=True)
+    get_preferred_seats(ALL_DATA, plot=True)

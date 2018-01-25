@@ -1,5 +1,4 @@
 import json
-import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -64,6 +63,8 @@ def seat_radii_prob(taken_data, data, max_radius=5, plot=False):
     answers = np.array(some_unavailable) + np.array(all_available) / 2
     if plot:
         plt.plot(answers)
+        plt.title("Probability of choosing a seat at a radius from most " +
+                  "preferred seat")
         plt.show()
     return answers
 
@@ -100,13 +101,76 @@ def beta_ratios(data):
     return list(map(lambda x: x / sum(avg_betas), avg_betas))
 
 
-if __name__ == "__main__":
-    filenames = ["fri-form.json", "wed_24.json"]
-    data = list(map(form_answers.load, filenames))
+def agent_attribute_gen(hist_data, min_val, max_val):
+    """Return a generator that yields values based on given histogram data."""
+    bin_heights, bin_ranges, _ = hist_data
+    print(bin_heights)
+    bin_probs = [x/sum(bin_heights) for x in bin_heights]
+    bin_indices = list(range(len(bin_heights)))
+    old_max = max(bin_ranges)
+    old_min = min(bin_ranges)
+    while True:
+        # Pull a value from the histogram.
+        bin_index = np.random.choice(bin_indices, p=bin_probs)
+        lower_bin_range = bin_ranges[bin_index]
+        upper_bin_range = bin_ranges[bin_index + 1]
+        old_value = np.random.uniform(lower_bin_range, upper_bin_range)
 
-    answers = seat_radii_prob(data[0], data[1], plot=True)
+        # Scale that value within the given range.
+        old_range = old_max - old_min
+        new_range = max_val - min_val
+        yield (((old_value - old_min) * new_range) / old_range) + min_val
+
+
+def agent_sociability_gen():
+    """Return a generator that yields agent sociability attributes.
+    These yielded values are scaled within [-1 1].
+
+    Usage:
+        sociability_gen = agent_sociability_gen()
+        first_sociability = next(sociability_gen)
+        second_sociability = next(sociability_gen)
+        etc..
+
+    Sociability is calculated by sampling from the histogram bins, the
+    probability of choosing a bin is proportional to its size.
+    """
+    _, hist_data = form_answers.importance_of_person(form_answers.ALL_DATA)
+    return agent_attribute_gen(hist_data, -1, 1)
+
+
+def agent_friendship_gen():
+    """Return a generator that yields agent sociability attributes.
+    These yielded values are scaled within [0 1].
+
+    Usage:
+        friendship_gen = agent_friendship_gen()
+        first_sociability = next(sociability_gen)
+        second_sociability = next(sociability_gen)
+        etc..
+
+    Friendship is calculated by sampling from the histogram bins, the
+    probability of choosing a bin is proportional to its size. Then a value is
+    chosen uniformly from that bin's range.
+    """
+    _, hist_data = form_answers.course_friends(form_answers.ALL_DATA)
+    return agent_attribute_gen(hist_data, 1, 0)
+
+
+if __name__ == "__main__":
+    print("Average beta ratios: {}".format(
+        json.dumps(beta_ratios(form_answers.ALL_DATA), indent=4)))
+
+    answers = seat_radii_prob(
+        form_answers.DATA[0], form_answers.DATA[1], plot=True)
     print("Seat choices at radius / seats at radius: {}".format(answers))
 
-    all_data = list(sum(data, []))
-    print("Average beta ratios: {}".format(
-        json.dumps(beta_ratios(all_data), indent=4)))
+    sociability_gen = agent_sociability_gen()
+    plt.hist([next(sociability_gen) for _ in range(10000)])
+    plt.title("Generated sociability attributes")
+    plt.show()
+
+    friendship_gen = agent_friendship_gen()
+    plt.hist([next(sociability_gen) for _ in range(10000)])
+    plt.title("Generated friendship attributes")
+    plt.show()
