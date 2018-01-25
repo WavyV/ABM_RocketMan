@@ -43,6 +43,8 @@ class Student(Agent):
     """
     def choose_seat(self, seat_pos=None, old_seat=None):
 
+        seat_choice = None
+
         if seat_pos is None:
             # determine all possible seats to choose from
             seat_options = []
@@ -91,7 +93,7 @@ class Student(Agent):
             # move to the selected seat
             seat_choice.student = self
             self.model.grid.move_agent(self, seat_choice.pos)
-            self.initial_happiness = np.max(seat_utilities) - seat_choice.get_accessibility()
+            self.initial_happiness = np.max(seat_utilities) - self.model.coefs[3]*seat_choice.get_accessibility()
             self.seated = True
 
 
@@ -134,16 +136,24 @@ class Seat(Agent):
 
     """
     Get the position utility of the seat, based on its location in the Classroom
-    """
-    def get_position_utility(self):
-        return self.model.classroom.pos_utilities[self.pos]
-
-    """
-    Get the accessibility of the seat defined as the negative number of Students between the seat and the aisle.
-    The student count for the left and right side are compared and the minimum is used.
 
     Returns:
-        u_accessibility: utiltiy (inverse of the number of Students to pass in order to reach the seat)
+        pos_utility: utility in range [0,1]
+    """
+    def get_position_utility(self):
+
+        pos_utility = self.model.classroom.pos_utilities[self.pos]
+        return pos_utility
+
+    """
+    Get the accessibility of the seat based on the number of Students between the seat and the aisle.
+    The student count for the left and right side are compared and the minimum is used.
+    This number is normalized by the maximal possible number of students to pass (dependent on the classroom design)
+    and then substracted from one in order to obtain values between 0 (number of students to be passed is maximal)
+    and 1 (no students to be passed).
+
+    Returns:
+        u_accessibility: utiltiy in range [0,1]
     """
     def get_accessibility(self):
 
@@ -183,7 +193,7 @@ class Seat(Agent):
             # if there is no aisle on the right side, always count the student on the left side
             count_right = np.infty
 
-        u_accessibility = -min(count_right, count_left)
+        u_accessibility = 1 - min(count_right, count_left)/float(self.model.classroom.max_pass)
 
         return u_accessibility
 
@@ -228,20 +238,19 @@ class Seat(Agent):
         return neighborhood
 
     """
-    Get the social utility of the Seat (including friendship and sociability component).
+    Get the social utility of the Seat (including both friendship and sociability component).
     Higher values represent higher attractivity.
-    Based on the social network connections to neighboring Students,
+    Values are based on the social network connections to neighboring Students,
     and the individual sociability of the Student making the decision:
         - The more friends are sitting closeby, the higher the friendship utility.
-        - If the Student is sociable (value = 1), the presence of unfamiliar neighbors increases the utility
-        - If the Student is unsociable (value = -1), the presence of unfamiliar neighbors decreases the utility
+        - The more sociable the student, the higher the utility in case of unfamiliar neighbors
 
     Args:
         student: the student making the seating choice
 
     Returns:
-        u_friendship: friendship component of the social utility
-        u_sociability: sociability component of the social utility
+        u_friendship: friendship component of the social utility (in range [0,1])
+        u_sociability: sociability component of the social utility (in range [0,1])
     """
     def get_social_utility(self, student):
 
@@ -265,6 +274,12 @@ class Seat(Agent):
                     # determine the sociability component based on the student's sociability attribute
                     if friendship == 0:
                         u_sociability += self.model.sociability_interaction_matrix[x,y] * student.sociability
+
+        # shift the sociability term to get values in range [0,1]
+        # 0 means aversion
+        # 0.5 means indifference (either due to the student's social indifference or due to empty seats)
+        # 1 means attraction
+        u_sociability += 0.5
 
         return u_friendship, u_sociability
 
@@ -300,7 +315,9 @@ class ClassroomModel(Model):
 
         self.max_num_agents = N
         self.classroom = classroom_design
-        self.coefs = coefs
+
+        # assure that the coefficients sum up to one
+        self.coefs = [c/float(sum(coefs)) for c in coefs]
 
         # if all utility components are set to zero, seat choices are completely random.
         self.random_seat_choice = np.all(coefs == 0)
@@ -319,10 +336,11 @@ class ClassroomModel(Model):
         self.grid = MultiGrid(classroom_design.width, classroom_design.num_rows, False)
         self.schedule = RandomActivation(self)
 
-        # matrices that determine the importance of neighboring seats for the social utility
-        # They need to have the same shape
-        self.friendship_interaction_matrix = np.array([[0, 0, 0], [1, 0, 1], [0, 0, 0]]).T
-        self.sociability_interaction_matrix = np.array([[0, 0, 0], [1, 0, 1], [0, 0, 0]]).T
+        # Matrices that determine the importance of neighboring seats for the social utility.
+        # They need to have the same shape.
+        # Values are scaled such that the resulting friendship and sociability terms are within range [0,1].
+        self.friendship_interaction_matrix = np.array([[0, 0, 0], [0.5, 0, 0.5], [0, 0, 0]]).T
+        self.sociability_interaction_matrix = np.array([[0, 0, 0], [0.25, 0, 0.25], [0, 0, 0]]).T
 
         # initialize seats (leave aisles free)
         for x in range(self.classroom.width):
@@ -363,7 +381,7 @@ class ClassroomModel(Model):
     Args:
         seat_pos: position at which the new student should be seated
     """
-    def step_predetermined_seating(seat_pos):
+    def step_predetermined_seating(self, seat_pos):
 
         n = self.schedule.get_agent_count()
         if n < self.max_num_agents:
@@ -374,6 +392,24 @@ class ClassroomModel(Model):
             # place new student at the predetermined seat
             student.choose_seat(seat_pos)
 
+    """
+    Get the current seating distribution in the classroom. Ones represent students, zeros represent available seats.
+    Aisles are stripped.
+
+    Returns:
+        model_state: binary matrix where each entry refers to a seat's state
+    """
+    def get_binary_model_state(self):
+
+        model_state = np.zeros((self.classroom.width, self.classroom.num_rows))
+        for student in self.schedule.agents:
+            model_state[student.pos] = 1
+
+        # remove aisles from the matrix
+        model_state = np.delete(model_state, self.classroom.aisles_x, axis=0)
+        model_state = np.delete(model_state, self.classroom.aisles_y, axis=1)
+
+        return model_state
 
 
 
@@ -415,7 +451,19 @@ class ClassroomDesign():
             self.entrances = entrances
 
         # define utility/attractivity of each seat location
-        if pos_utilities is not None and pos_utilities.shape == (self.width, num_rows):
-            self.pos_utilities = pos_utilities
+        if pos_utilities is not None and pos_utilities.shape == (self.width, num_rows) and np.max(pos_utilities) > 0:
+            # scale the given attractivity weights to assure values in range [0,1]
+            self.pos_utilities = pos_utilities/float(np.max(pos_utilities))
         else:
             self.pos_utilities = np.zeros((self.width, num_rows))
+
+        # determine the maximal number of seats to be passed in order to get to a seat
+        max_pass_per_block = []
+        for i,b in enumerate(blocks):
+            if i > 0 and i < len(blocks)-1:
+                # for inner blocks with aisles on the left and right, only half of the row needs to be passed
+                max_pass_per_block.append(int((b-1)/2))
+            else:
+                # for outer blocks with access to only one aisle, the entire row needs to be passed
+                max_pass_per_block.append(b-1)
+        self.max_pass = max(max_pass_per_block)

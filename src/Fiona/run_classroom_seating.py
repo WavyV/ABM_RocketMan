@@ -35,7 +35,7 @@ Returns:
     info: 3D array comprising the 4 matrices 'seat_utilities', 'student_IDs', 'student_sociabilities' and 'initial_happiness'
 """
 def get_model_state(model):
-    image = -8*np.ones((model.grid.height, model.grid.width))
+    image = -0.8*np.ones((model.grid.height, model.grid.width))
     info = np.zeros((model.grid.height, model.grid.width, 4))
 
     for cell in model.grid.coord_iter():
@@ -46,12 +46,11 @@ def get_model_state(model):
                 info[y,x,0] = model.classroom.pos_utilities[x,y]
                 if agent.student is None:
                     # seat is available. Determine level of blocking
-                    image[y,x] = -10 + agent.get_accessibility()
+                    image[y,x] = -2 + agent.get_accessibility()
                 else:
                     # seat is occupied. Set value based on the student's happiness
-                    image[y,x] = 10
-                    u_friendship, u_sociability = agent.get_social_utility(agent.student)
-                    image[y,x] += agent.get_position_utility() + u_friendship + u_sociability
+                    image[y,x] = 1
+                    image[y,x] += agent.get_total_utility(agent.student) - model.coefs[3]*agent.get_accessibility()
 
                     # save student's properties
                     info[y,x,1] = agent.student.unique_id
@@ -59,7 +58,7 @@ def get_model_state(model):
                     info[y,x,3] = agent.student.initial_happiness
 
     for pos in model.classroom.entrances:
-        image[pos[1],pos[0]] = -20
+        image[pos[1],pos[0]] = -2
 
     return image, info
 
@@ -70,8 +69,8 @@ Set the parameters
 seed = 0
 
 # The classroom layout
-blocks = [10, 15, 10]
-num_rows = 20
+blocks = [6, 14, 0]
+num_rows = 14
 width = sum(blocks) + len(blocks) - 1
 entrances = [(width-1, 0)]
 pos_utilities = np.zeros((width, num_rows))
@@ -80,16 +79,16 @@ classroom = ClassroomDesign(blocks, num_rows, pos_utilities, entrances)
 
 
 # The social network of Students
-cliques = 60
+cliques = 50
 clique_size = 6
 max_num_agents = cliques * clique_size
 prob_linked_cliques = 0.3
 social_network = nx.to_numpy_matrix(nx.relaxed_caveman_graph(cliques, clique_size, prob_linked_cliques, seed))
 
 # The coefficients for the utility function [position, friendship, sociability, accessibility]
-coefs_position_accessibility = [1, 0, 0, 0.1]
-coefs_sociability = [1, 0, 1, 0.1]
-coefs_friendship = [1, 1, 1, 0.1]
+coefs_position_accessibility = [1, 0, 0, 1]
+coefs_sociability = [1, 0, 1, 1]
+coefs_friendship = [1, 1, 1, 1]
 
 
 """
@@ -108,8 +107,8 @@ Initialize the plots
 """
 fig, axs = plt.subplots(1, len(models), figsize=(5*len(models),5))
 
-min_value = -20
-max_value = 20
+min_value = -2
+max_value = 2
 
 images = []
 model_data = []
@@ -147,20 +146,20 @@ def hover(event):
             cond, ind = images[i].contains(event)
             if cond:
                 x, y = int(np.round(event.xdata)), int(np.round(event.ydata))
-                value = int(images[i].get_array()[y][x])
+                value = images[i].get_array()[y][x]
                 seat_utility, student_id, sociability, initial_happiness = model_data[i][y,x]
 
                 text = ""
-                if value == -8:
+                if value == -0.8:
                     text = "AISLE"
-                elif value == -20:
+                elif value == -2:
                     text = "DOOR"
-                elif value <= -10:
-                    text = "EMPTY SEAT\nSeat utility: {}\nAccessibility: {}".format(seat_utility, value + 10)
+                elif value <= -1:
+                    text = "EMPTY SEAT\nSeat attractivity: {:.2f}\nAccessibility: {:.2f}".format(seat_utility, value + 2)
                 elif value >= 0:
-                    text = "FILLED SEAT\n {} {:.2f} \n {} {} \n {} {:.2f} \n {} {:.2f}".format("Seat utility:", seat_utility,
+                    text = "FILLED SEAT\n {} {:.2f} \n {} {} \n {} {:.2f} \n {} {:.2f}".format("Seat attractivity:", seat_utility,
                                 "Student sociability:", int(sociability), "Initial happiness (t = {}):".format(int(student_id)),
-                                initial_happiness, "Current happiness:", value - 10)
+                                initial_happiness, "Current happiness:", value - 1)
 
                 a.set_text(text)
                 a.xy = (x, y)
@@ -255,6 +254,7 @@ def generate_data(num_iterations):
             models[i].step()
             model_states.append(get_model_state(models[i]))
         all_model_states.append(model_states)
+
     # Save all model state data.
     with open(MODEL_DATA_PATH, "wb") as f:
         pickle.dump(all_model_states, f)
