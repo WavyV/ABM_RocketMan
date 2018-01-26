@@ -2,6 +2,7 @@ import json
 
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy import signal
 
 import form_answers
 import taken_seats
@@ -11,6 +12,13 @@ Process form answers into useful information for the model.
 
 Form answers are calculated using the form_answers module.
 """
+
+
+def scale(old_val, old_min, old_max, new_min, new_max):
+    """Scale the given x from the old range to the new range."""
+    old_range = old_max - old_min
+    new_range = new_max - new_min
+    return (((old_val - old_min) * new_range) / old_range) + new_min
 
 
 def get_seat_stats(seats, max_radius, taken=None, center=(3, 12)):
@@ -63,8 +71,7 @@ def seat_radii_prob(taken_data, data, max_radius=5, plot=False):
     answers = np.array(some_unavailable) + np.array(all_available) / 2
     if plot:
         plt.plot(answers)
-        plt.title("Probability of choosing a seat at a radius from most " +
-                  "preferred seat")
+        plt.title("#choices at radius / #seats at radius")
         plt.show()
     return answers
 
@@ -101,7 +108,30 @@ def beta_ratios(data):
     return list(map(lambda x: x / sum(avg_betas), avg_betas))
 
 
-def agent_attribute_gen(hist_data, min_val, max_val, noise_std_dev=0.25):
+def seat_location_scores(iterations=10, plot=False):
+    """Apply convolution to the "preferred seat" question data."""
+    seats = form_answers.get_preferred_seats(form_answers.ALL_DATA)
+    weights = [
+        [0.25, 0.5, 0.25],
+        [0.5,  1,   0.5],
+        [0.25, 0.5, 0.25],
+    ]
+    for _ in range(iterations):
+        seats = signal.convolve2d(seats, weights, boundary="symm", mode="same")
+    # Scale each seat into [0 1].
+    max_score = np.amax(seats)
+    min_score = np.amin(seats)
+    for i in range(len(seats)):
+        for j in range(len(seats[0])):
+            seats[i][j] = scale(seats[i][j], min_score, max_score, 0, 1)
+    if plot:
+        plt.imshow(seats)
+        plt.colorbar()
+        plt.show()
+    return seats
+
+
+def agent_attribute_gen(hist_data, scale=None, noise_std_dev=0.25):
     """Return a generator that yields values based on given histogram data.
 
     `noise_std_dev` is the std deviations of noise measured in bin sizes.
@@ -129,14 +159,16 @@ def agent_attribute_gen(hist_data, min_val, max_val, noise_std_dev=0.25):
             continue
 
         # Scale the noisy value within the given scale.
-        old_range = bin_max - bin_min
-        new_range = max_val - min_val
-        yield (((old_value - bin_min) * new_range) / old_range) + min_val
+        if scale is not None:
+            min_val, max_val = scale
+            yield scale(old_value, bin_min, bin_max, min_val, max_val)
+        else:
+            yield old_value
 
 
 def agent_sociability_gen():
     """Return a generator that yields agent sociability attributes.
-    These yielded values are scaled within [-1 1].
+    These yielded values are scaled within [0 1].
 
     Usage:
         sociability_gen = agent_sociability_gen()
@@ -148,25 +180,24 @@ def agent_sociability_gen():
     probability of choosing a bin is proportional to its size.
     """
     _, hist_data = form_answers.importance_of_person(form_answers.ALL_DATA)
-    return agent_attribute_gen(hist_data, -1, 1)
+    return agent_attribute_gen(hist_data, scale=(0, 1))
 
 
-def agent_friendship_gen():
-    """Return a generator that yields agent sociability attributes.
-    These yielded values are scaled within [0 1].
+def agent_friends_gen():
+    """Return a generator that yields agent course friends.
 
     Usage:
-        friendship_gen = agent_friendship_gen()
-        first_sociability = next(sociability_gen)
-        second_sociability = next(sociability_gen)
+        friends_gen = agent_friends_gen()
+        first_friends = next(friends_gen)
+        second_friends = next(friends_gen)
         etc..
 
-    Friendship is calculated by sampling from the histogram bins, the
-    probability of choosing a bin is proportional to its size. Then a value is
-    chosen uniformly from that bin's range.
+    Friends are calculated by sampling from the histogram bins, the probability
+    of choosing a bin is proportional to its size. Then a value is chosen
+    uniformly from that bin's range.
     """
     _, hist_data = form_answers.course_friends(form_answers.ALL_DATA)
-    return agent_attribute_gen(hist_data, 0, 1)
+    return agent_attribute_gen(hist_data, scale=(0, 50))
 
 
 if __name__ == "__main__":
@@ -175,14 +206,16 @@ if __name__ == "__main__":
 
     answers = seat_radii_prob(
         form_answers.DATA[0], form_answers.DATA[1], plot=True)
-    print("Seat choices at radius / seats at radius: {}".format(answers))
+    print("#choices at radius / #seats at radius: {}".format(answers))
 
     sociability_gen = agent_sociability_gen()
-    plt.hist([next(sociability_gen) for _ in range(10000)], bins=100)
-    plt.title("Generated sociability attributes")
+    plt.hist([next(sociability_gen) for _ in range(75)], bins=100)
+    plt.title("Generated sociability")
     plt.show()
 
-    friendship_gen = agent_friendship_gen()
-    plt.hist([next(friendship_gen) for _ in range(10000)], bins=100)
-    plt.title("Generated friendship attributes")
+    friendship_gen = agent_friends_gen()
+    plt.hist([next(friendship_gen) for _ in range(75)], bins=100)
+    plt.title("Generated course friends")
     plt.show()
+
+    seat_location_scores(plot=True)
