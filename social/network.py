@@ -124,7 +124,7 @@ def graph_to_histogram(G):
 
 if __name__ == "__main__":
     # create erdos-renyi graph
-    c, G = erdos_renyi(75, 16.68/75, True)
+    c, G = erdos_renyi(75, 16.68/75, False)
     graph_to_histogram(G)
 
     # create barabasi-albert graph
@@ -134,5 +134,5 @@ if __name__ == "__main__":
 
     #create walts graph
     degree_sequence = [5, 12, 3, 25, 9, 10, 6, 20, 20, 8, 7, 15, 16, 30, 3, 5, 20, 3, 10, 20, 20, 40, 10, 10, 8, 45, 8, 5, 6, 9, 35, 30, 10, 5, 15, 3, 40, 25, 40, 10, 15, 5, 16, 30, 6, 40, 17, 25, 8, 30, 50, 20, 20, 4, 10, 6, 12, 15, 30, 20, 7, 6, 7, 30, 50, 25, 25, 10, 15, 5, 30, 5, 6, 15, 15]
-    walts_graph(degree_sequence, plot = False)
+    C, G = walts_graph(degree_sequence, plot = True)
     graph_to_histogram(G)
