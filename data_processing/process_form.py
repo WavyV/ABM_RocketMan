@@ -108,15 +108,18 @@ def beta_ratios(data):
     return list(map(lambda x: x / sum(avg_betas), avg_betas))
 
 
-def seat_location_scores(iterations=10, plot=False):
-    """Apply convolution to the "preferred seat" question data."""
+def seat_location_scores(convolution_iters=10, plot=False):
+    """Return a 2d array (row major) of location scores for each seat.
+
+    Applies convolution to the "preferred seat" question data.
+    """
     seats = form_answers.get_preferred_seats(form_answers.ALL_DATA)
     weights = [
         [0.25, 0.5, 0.25],
         [0.5,  1,   0.5],
         [0.25, 0.5, 0.25],
     ]
-    for _ in range(iterations):
+    for _ in range(convolution_iters):
         seats = signal.convolve2d(seats, weights, boundary="symm", mode="same")
     # Scale each seat into [0 1].
     max_score = np.amax(seats)
@@ -131,7 +134,7 @@ def seat_location_scores(iterations=10, plot=False):
     return seats
 
 
-def agent_attribute_gen(hist_data, scale=None, noise_std_dev=0.25):
+def agent_attribute_gen(hist_data, scale_to=None, noise_std_dev=0.25):
     """Return a generator that yields values based on given histogram data.
 
     `noise_std_dev` is the std deviations of noise measured in bin sizes.
@@ -160,7 +163,7 @@ def agent_attribute_gen(hist_data, scale=None, noise_std_dev=0.25):
 
         # Scale the noisy value within the given scale.
         if scale is not None:
-            min_val, max_val = scale
+            min_val, max_val = scale_to
             yield scale(old_value, bin_min, bin_max, min_val, max_val)
         else:
             yield old_value
@@ -180,7 +183,7 @@ def agent_sociability_gen():
     probability of choosing a bin is proportional to its size.
     """
     _, hist_data = form_answers.importance_of_person(form_answers.ALL_DATA)
-    return agent_attribute_gen(hist_data, scale=(0, 1))
+    return agent_attribute_gen(hist_data, scale_to=(0, 1))
 
 
 def agent_friends_gen():
@@ -197,7 +200,7 @@ def agent_friends_gen():
     uniformly from that bin's range.
     """
     _, hist_data = form_answers.course_friends(form_answers.ALL_DATA)
-    return agent_attribute_gen(hist_data, scale=(0, 50))
+    return agent_attribute_gen(hist_data, scale_to=(0, 50))
 
 
 if __name__ == "__main__":
@@ -209,7 +212,7 @@ if __name__ == "__main__":
     print("#choices at radius / #seats at radius: {}".format(answers))
 
     sociability_gen = agent_sociability_gen()
-    plt.hist([next(sociability_gen) for _ in range(75)], bins=100)
+    plt.hist([next(sociability_gen) for _ in range(1000)], bins=100)
     plt.title("Generated sociability")
     plt.show()
 
