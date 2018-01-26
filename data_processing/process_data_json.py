@@ -29,5 +29,4 @@ print("length of list = " + str(len(list_degree)))
 print(np.mean(np.asarray(list_degree)))
 
 plt.hist(list_degree)
-plt.yscale("log")
 plt.show()
