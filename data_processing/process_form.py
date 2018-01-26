@@ -166,7 +166,7 @@ def agent_friendship_gen():
     chosen uniformly from that bin's range.
     """
     _, hist_data = form_answers.course_friends(form_answers.ALL_DATA)
-    return agent_attribute_gen(hist_data, 0, 1)
+    return agent_attribute_gen(hist_data, 0, 50)
 
 
 if __name__ == "__main__":
@@ -183,6 +183,6 @@ if __name__ == "__main__":
     plt.show()
 
     friendship_gen = agent_friendship_gen()
-    plt.hist([next(friendship_gen) for _ in range(10000)], bins=100)
+    plt.hist([next(friendship_gen) for _ in range(75)], bins=100)
     plt.title("Generated friendship attributes")
     plt.show()
