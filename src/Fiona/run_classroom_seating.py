@@ -7,6 +7,7 @@ from matplotlib import animation
 import pickle
 import sys
 from matplotlib.text import OffsetFrom
+import network
 
 MODEL_DATA_PATH = "_model_data.json"
 NUM_ITERATIONS = 300
@@ -18,6 +19,36 @@ Usage:
     python3 run_classroom_seating.py generate
     python3 run_classroom_seating.py animate
 """
+
+
+"""
+Initialize the ClassroomModel
+
+Args:
+    coefs: coefficients for the utility function
+    seed: for random number generation
+
+Returns:
+    model: the created model instance
+"""
+def init_model(coefs, seed=0):
+
+    # The (fixed) classroom layout
+    blocks = [6, 14, 0]
+    num_rows = 14
+    width = sum(blocks) + len(blocks) - 1
+    entrances = [(width-1, 0)]
+    pos_utilities = np.zeros((width, num_rows))
+    classroom = ClassroomDesign(blocks, num_rows, pos_utilities, entrances)
+
+    # The social network of Students
+    social_network = network.erdos_renyi(classroom.seat_count, 0.2)
+
+    # create the model
+    model = ClassroomModel(classroom, coefs, social_network=social_network, seed=seed)
+
+    return model
+
 
 
 """
@@ -62,78 +93,6 @@ def get_model_state(model):
 
     return image, info
 
-
-"""
-Set the parameters
-"""
-seed = 0
-
-# The classroom layout
-blocks = [6, 14, 0]
-num_rows = 14
-width = sum(blocks) + len(blocks) - 1
-entrances = [(width-1, 0)]
-pos_utilities = np.zeros((width, num_rows))
-
-classroom = ClassroomDesign(blocks, num_rows, pos_utilities, entrances)
-
-
-# The social network of Students
-cliques = 50
-clique_size = 6
-max_num_agents = cliques * clique_size
-prob_linked_cliques = 0.3
-social_network = nx.to_numpy_matrix(nx.relaxed_caveman_graph(cliques, clique_size, prob_linked_cliques, seed))
-
-# The coefficients for the utility function [position, friendship, sociability, accessibility]
-coefs_position_accessibility = [1, 0, 0, 1]
-coefs_sociability = [1, 0, 1, 1]
-coefs_friendship = [1, 1, 1, 1]
-
-
-"""
-Initialize the models
-"""
-model_pos_access = ClassroomModel(classroom, coefs_position_accessibility)
-model_sociability = ClassroomModel(classroom, coefs_sociability)
-model_friendship = ClassroomModel(classroom, coefs_friendship, social_network=social_network)
-
-models = [model_pos_access, model_sociability, model_friendship]
-model_names = ["position + accessibility", "position + accessibility + sociability", "position + accessibility + sociability + friendship"]
-
-
-"""
-Initialize the plots
-"""
-fig, axs = plt.subplots(1, len(models), figsize=(5*len(models),5))
-
-min_value = -2
-max_value = 2
-
-images = []
-model_data = []
-annotes = []
-
-for i, ax in enumerate(fig.axes):
-
-    image, info = get_model_state(models[i])
-    images.append(ax.imshow(image, vmin=min_value, vmax=max_value, cmap = "RdYlGn", interpolation=None))
-    ax.axis("off")
-    ax.set_title(model_names[i])
-
-    model_data.append(info)
-
-    # initialize annotations
-    helper = ax.annotate("", xy=(0.5, 0), xycoords="axes fraction",
-                  va="bottom", ha="center")
-    offset_from = OffsetFrom(helper, (0.5, 0))
-    a = ax.annotate("seat", xy=(0,0), xycoords="data",
-                  xytext=(0, -10), textcoords=offset_from,
-                  va="top", ha="center",
-                  bbox=dict(boxstyle="round", fc="w"),
-                  arrowprops=dict(arrowstyle="->"), alpha=1)
-    a.set_visible(False)
-    annotes.append(a)
 
 
 """
@@ -243,7 +202,7 @@ def animate_models(num_iterations):
 """
 Generate the necessary model state for each animation.
 """
-def generate_data(num_iterations):
+def generate_data(models, num_iterations):
     # Save model state for each model for each step
     all_model_states = []
     for i in range(len(models)):
@@ -262,6 +221,42 @@ def generate_data(num_iterations):
 
 if __name__ == "__main__":
     if sys.argv[1] == "animate":
+
+        """
+        Initialize the plots
+        """
+        fig, axs = plt.subplots(1, len(models), figsize=(5*len(models),5))
+        model_names = ["position + accessibility", "position + accessibility + sociability", "position + accessibility + sociability + friendship"]
+
+        min_value, max_value = -2, 2
+
+        images, model_data, annotes = [], [], []
+
+        for i, ax in enumerate(fig.axes):
+
+            image, info = get_model_state(models[i])
+            images.append(ax.imshow(image, vmin=min_value, vmax=max_value, cmap = "RdYlGn", interpolation=None))
+            ax.axis("off")
+            ax.set_title(model_names[i])
+
+            model_data.append(info)
+
+            # initialize annotations
+            helper = ax.annotate("", xy=(0.5, 0), xycoords="axes fraction",
+                          va="bottom", ha="center")
+            offset_from = OffsetFrom(helper, (0.5, 0))
+            a = ax.annotate("seat", xy=(0,0), xycoords="data",
+                          xytext=(0, -10), textcoords=offset_from,
+                          va="top", ha="center",
+                          bbox=dict(boxstyle="round", fc="w"),
+                          arrowprops=dict(arrowstyle="->"), alpha=1)
+            a.set_visible(False)
+            annotes.append(a)
+
         animate_models(NUM_ITERATIONS)
+
     elif sys.argv[1] == "generate":
-        generate_data(NUM_ITERATIONS)
+
+        # initialize and run models with given utility coefficients [position, friendship, sociability, accessibility]
+        models = [init_model([1,0,0,1]), init_model([1,0,1,1]), init_model([1,1,1,1])]
+        generate_data(models, NUM_ITERATIONS)

@@ -30,8 +30,8 @@ class Student(Agent):
 
         """ currently not used """
         self.will_to_change_seat = False
-        self.moving_threshold = 5 # TODO: think about appropriate value!
-        self.moving_prob = 0.2 # TODO: think about appropriate value!
+        self.moving_threshold = 1
+        self.moving_prob = 0.2
 
 
 
@@ -321,13 +321,13 @@ class ClassroomModel(Model):
     Create a classroom model
 
     Args:
-        N: maximal number of students entering the classroom
         classroom_design: instance of ClassroomDesign defining the layout and position-dependent seat utilities of the classroom
         coefs: list [coef_p, coef_f, coef_s, coef_a] defining the coefficients for the position, friendship, sociability and accessibility components in the utility function
+        sociability_distr: probability distribution of the students' sociability attribute
         social_network: the underlying social network as a connectivity matrix (1 means friendship, 0 means indifference). If not given, all connections are set to zero.
         seed: seed for the random number generation
     """
-    def __init__(self, classroom_design, coefs, sociability_distr=[1/3, 1/3, 1/3], social_network=None, seed=0):
+    def __init__(self, classroom_design, coefs=[0.25,0.25,0.25,0.25], sociability_distr=[1/3, 1/3, 1/3], social_network=None, seed=0):
 
         self.classroom = classroom_design
 
@@ -340,13 +340,8 @@ class ClassroomModel(Model):
         # if all utility components are set to zero, seat choices are completely random.
         self.random_seat_choice = np.all(coefs == 0)
 
-        if social_network is None and coefs[1] == 0:
-            # no social connections
-            self.max_num_agents = self.classroom.seat_count
-            self.social_network = np.zeros((self.max_num_agents, self.max_num_agents))
-        elif social_network is None and coefs[1] != 0:
+        if social_network is None:
             # create a random network
-            #self.social_network = np.random.randint(2, size=(N,N))
             self.max_num_agents = self.classroom.seat_count
             self.social_network = network.erdos_renyi(self.max_num_agents, 0.2)
         else:
