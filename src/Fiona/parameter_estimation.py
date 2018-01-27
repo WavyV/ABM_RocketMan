@@ -4,6 +4,14 @@ import model_comparison
 import matplotlib.pyplot as plt
 import numpy as np
 from noisyopt import minimizeSPSA
+import time
+from os import path
+import json
+
+MODEL_DATA_PATH = "model_data/parameter_estimation"
+FILE_NAME = time.strftime("%Y%m%d-%H%M%S") + ".json"
+
+RESULTS_JSON = []
 
 """
 Initialize the ClassroomModel
@@ -48,9 +56,9 @@ Args:
     method: {'lbp', 'cluster', 'entropy'} The method to be used to compute the profiles of the seating distributions
 
 Returns:
-    deviation: mean deviation between model outputs and target outputs
+    mean_error: mean MSE between model output profiles and target output profiles
 """
-def objective_function(coefs, class_size, sociability_distr, degree_sequence, num_iterations, target_output, method):
+def objective_function(coefs, class_size, sociability_distr, degree_sequence, num_iterations,num_repetitions, target_output, method):
 
     # assure that the coefficients sum up to one
     coefs = [(c/sum(coefs) if sum(coefs) > 0 else 0) for c in coefs]
@@ -58,25 +66,38 @@ def objective_function(coefs, class_size, sociability_distr, degree_sequence, nu
 
     # run the model several times to handle stochasticity
     model_outputs = []
-    aisles_x = []
-    for seed in range(10):
+    errors = []
+    for seed in range(num_repetitions):
         print("repetition {}".format(seed + 1))
         model = init_model(coefs, class_size, sociability_distr, degree_sequence, seed)
         for n in range(num_iterations):
             model.step()
         model_output = model.get_binary_model_state()
         model_outputs.append(model_output)
+
+        # compute the error between model output and target output
         aisles_x = model.classroom.aisles_x
+        errors.append(model_comparison.compare(model_output, target_output, method=method, aisles=aisles_x))
 
-        #plt.figure()
-        #plt.imshow(model_output.T)
-        #plt.show()
+    # compute the error averaged over the set of runs
+    mean_error = np.mean(errors)
+    print("mean error = {:.4f}".format(mean_error))
 
-    # compute the error between model output and target output (averaged over the set of runs)
-    deviation = np.mean([model_comparison.compare(m, target_output, method=method, aisles=aisles_x) for m in model_outputs])
+    # save the results
+    RESULTS_JSON.append({"coefs":coefs, "errors":errors})
 
-    print("mean error = {:.4f}".format(deviation))
-    return deviation
+    return mean_error
+
+
+"""
+Save the results from repeated simulation with given coefficients as a json file_name.
+All results collected from one parameter estimation process are included into the same file.
+"""
+def save_json():
+
+    with open(path.join(MODEL_DATA_PATH, FILE_NAME), mode='w', encoding='utf-8') as f:
+        json.dump(RESULTS_JSON, f)
+
 
 """
 Create a dummy seating distribution
@@ -114,6 +135,7 @@ if __name__ == "__main__":
 
     target_output = create_random_test_output(20, 13, num_iterations) # dummpy seating distribution for comparison
     method = 'lbp' # the method used for comparison
+    num_repetitions = 10 # number of runs with different random seeds per parameter combination
 
     # bounds for the parameters to be estimated
     bounds = [[0.0, 1.0], [0.0, 1.0], [0.0, 1.0], [0.0, 1.0]]
@@ -123,7 +145,9 @@ if __name__ == "__main__":
 
     # simultaneous perturbation stochastic approximation algorithm
     result = minimizeSPSA(objective_function, x0,
-            args=(class_size, s_distr, d_seq, num_iterations, target_output, method),
-            bounds=bounds, niter=50, a=0.1, paired=False)
+            args=(class_size, s_distr, d_seq, num_iterations, num_repetitions, target_output, method),
+            bounds=bounds, niter=10, a=0.1, paired=False)
+
+    save_json()
 
     print(result)
