@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 from classroom_seating import *
 import matplotlib.pyplot as plt
 import networkx as nx

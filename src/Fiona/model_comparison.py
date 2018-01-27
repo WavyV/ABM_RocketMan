@@ -8,9 +8,11 @@ _compare_dict = {'lbp': 0, 'cluster': 1, 'entropy': 2}
 
 
 """
-############################################
-Essential tools for analyzing the model data
-############################################
+This is an adjusted version of Arran's 'utils.py'
+Since the classroom_seating module now provides a methods that directly gives the desired binary model state,
+The 'reduction' method is not needed anymore.
+
+We should merge them into one generally applicable version.
 """
 
 
@@ -21,9 +23,11 @@ Returns a list of counts for each length of each cluster of seated students.
 This method escentially returns a histogram of group "lengths". Note an aisle
 is considered the end of a group. Only counts horizontal groupings and so
 assumes rows are independent.
+
 Args:
     model_state: seating distribution as a binary matrix of seats
     aisles: A list of vertical aisles.
+
 Returns:
     A numpy list of counts, where the ith element corresponds to the number of
     i lengthed groups, up to the max possible length defined by the aisles
@@ -57,8 +61,10 @@ Advantages:
     - Captures somewhat the spacial distribution of seating,
     - The fine grain allows distinction between very similar but different models,
     - Can be used to compare any sized lecture theater.
+
 Args:
     model_state: seating distribution as a binary matrix of seats
+
 Returns:
     A numpy list of length 256, with each element corresponding to the count of
     each uniquley defined LBP
@@ -89,8 +95,10 @@ def count_lbp(model_state):
 
 """
 Calculates the entropy profile of a model state.
+
 Args:
     model_state: seating distribution as a binary matrix of seats
+
 Returns:
     A list of entropies for neighborhood sizes k = 1 to minimium matrix side
     length.

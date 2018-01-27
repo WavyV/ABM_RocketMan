@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 from mesa import Agent, Model
 from mesa.time import RandomActivation
 from mesa.space import MultiGrid
