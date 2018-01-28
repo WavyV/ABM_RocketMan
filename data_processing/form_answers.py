@@ -78,6 +78,7 @@ def get_seats(data, key, plot=False, title=None):
 
 def crosscosts(data, plot=False):
     """Return a list of the crosscosts, and the histogram data.
+
     If `plot`, plot the histogram of the returned data.
     """
     return answers_and_hist(data, "crosscost", bins=8, plot=plot,
@@ -86,6 +87,7 @@ def crosscosts(data, plot=False):
 
 def course_friends(data, plot=False):
     """Return the amount of course friends people have, and the histogram data.
+
     If `plot`, plot the histogram of the returned data.
     """
     return answers_and_hist(data, "coursefriends", bins="auto", plot=plot,
@@ -107,6 +109,7 @@ def know_neighbour(data, plot=False):
 
 def social_weighting(data, plot=False):
     """Return a list of the social slider values, and the histogram data.
+
     If `plot`, plot the histogram of the returned data.
     """
     return answers_and_hist(data, "slider", bins=20, plot=plot,
@@ -117,6 +120,7 @@ def social_weighting(data, plot=False):
 def importance_of_familiarity(data, plot=False):
     """Return a list of the importance of sitting next to someone familiar, and the
     histogram data.
+
     If `plot`, plot the histogram of the returned data.
     """
     return answers_and_hist(data, "sitnexttofamiliar", bins=5, plot=plot,
@@ -127,6 +131,7 @@ def importance_of_familiarity(data, plot=False):
 def importance_of_person(data, plot=False):
     """Return a list of the importance of sitting next to a person, and the
        histogram data.
+
     If `plot`, plot the histogram of the returned data.
     """
     return answers_and_hist(data, "sitnexttoperson", bins=5, plot=plot,
@@ -137,6 +142,7 @@ def importance_of_person(data, plot=False):
 def importance_of_location(data, plot=False):
     """Return a list of the importance of sitting in preferred location, and the
     histogram data.
+
     If `plot`, plot the histogram of the returned data.
     """
     return answers_and_hist(data, "sitgoodlocation", bins=5, plot=plot,
@@ -147,6 +153,7 @@ def importance_of_location(data, plot=False):
 def importance_of_accessibility(data, plot=False):
     """Return a list of the importance of sitting in easy to reach seat, and
     the histogram data
+
     If `plot`, plot the histogram of the returned data.
     """
     return answers_and_hist(data, "siteasyreach", bins=5, plot=plot,
@@ -164,6 +171,7 @@ def get_actual_seats(data, plot=False):
 
 def get_preferred_seats(data, plot=False):
     """Returns a matrix of students preferred seats.
+
     If `plot`, plot returned data using imshow.
     """
     return get_seats(data, "seatpreffered", plot=plot,

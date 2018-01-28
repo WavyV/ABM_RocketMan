@@ -9,6 +9,7 @@ from data_processing import taken_seats
 
 """
 Process form answers into useful information for the model.
+
 Form answers are calculated using the form_answers module.
 """
 
@@ -23,6 +24,7 @@ def scale(old_val, old_min, old_max, new_min, new_max):
 def get_seat_stats(seats, max_radius, taken=None, center=(3, 12)):
     """Return the total amount of seat choices at each radius / the amount of seats
        at that radius.
+
        NOTE: Use `seat_radii_prob` as a convenience wrapper.
     """
     c_i, c_j = center
@@ -108,6 +110,7 @@ def beta_ratios(data):
 
 def seat_location_scores(convolution_iters=10, plot=False):
     """Return a 2d array (row major) of location scores for each seat.
+
     Applies convolution to the "preferred seat" question data.
     """
     seats = form_answers.get_preferred_seats(form_answers.ALL_DATA)
@@ -133,6 +136,7 @@ def seat_location_scores(convolution_iters=10, plot=False):
 
 def agent_attribute_gen(hist_data, scale_to=None, noise_std_dev=0.25):
     """Return a generator that yields values based on given histogram data.
+
     `noise_std_dev` is the std deviations of noise measured in bin sizes.
     """
     bin_heights, bin_ranges, _ = hist_data
@@ -168,11 +172,13 @@ def agent_attribute_gen(hist_data, scale_to=None, noise_std_dev=0.25):
 def agent_sociability_gen():
     """Return a generator that yields agent sociability attributes.
     These yielded values are scaled within [0 1].
+
     Usage:
         sociability_gen = agent_sociability_gen()
         first_sociability = next(sociability_gen)
         second_sociability = next(sociability_gen)
         etc..
+
     Sociability is calculated by sampling from the histogram bins, the
     probability of choosing a bin is proportional to its size.
     """
@@ -182,11 +188,13 @@ def agent_sociability_gen():
 
 def agent_friends_gen():
     """Return a generator that yields agent course friends.
+
     Usage:
         friends_gen = agent_friends_gen()
         first_friends = next(friends_gen)
         second_friends = next(friends_gen)
         etc..
+
     Friends are calculated by sampling from the histogram bins, the probability
     of choosing a bin is proportional to its size. Then a value is chosen
     uniformly from that bin's range.

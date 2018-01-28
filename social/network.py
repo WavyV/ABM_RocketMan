@@ -90,8 +90,11 @@ def walts_graph(degree_sequence, plot):
 
         # The number of connections agent i has made is now changed. If it was able to connect to the desired amount of other
         # agents this value is zero. If it could not make all the connections it desired this value is greater than 0.
+
+        """ k is not defined here!!!??? """
         #if available_connections[i] > 0:
-        #    available_connections[i] -= k + 1
+        #    available_connections[i] -= k + 1 
+
 
     # generate network
     G = nx.from_numpy_matrix(C)
