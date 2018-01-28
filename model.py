@@ -13,7 +13,7 @@ This is the main modeling module, providing classes for
     - classroom design
 
 General usage:
-    - initialize the model: m = ClassroomModel(classroom_design, coefs=[0.25,0.25,0.25,0.25], sociability_distr=[1/3, 1/3, 1/3], social_network=None, seed=0):
+    - initialize the model: m = ClassroomModel(classroom_design, coefs=[0.25,0.25,0.25,0.25], sociability_sequence, degree_sequence, seed=0):
     - run the model for one time step: m.step()
     - get the current seating distribution: output = m.get_binary_model_state()
 
@@ -339,7 +339,7 @@ class ClassroomModel(Model):
                 If not given, a random social network (erdos renyi) is created
         seed: seed for the random number generation
     """
-    def __init__(self, classroom_design, coefs=[0.25,0.25,0.25,0.25], degree_sequence=None, sociability_sequence=None, seed=0):
+    def __init__(self, classroom_design, coefs=[0.25,0.25,0.25,0.25], sociability_sequence=None, degree_sequence=None, seed=0):
 
         self.rand = np.random.RandomState(seed)
 
