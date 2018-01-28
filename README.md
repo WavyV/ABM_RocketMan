@@ -1,6 +1,9 @@
 # The Classroom Model
 In this project an Agent-Based Model (ABM) of the seating process in classrooms is implemented.
 
+## Overleaf LaTeX Report Link: 
+https://www.overleaf.com/13250817fxtnzrkyyrjf
+
 ## Structure
 
 * ``model.py`` implements the classroom model.
@@ -20,6 +23,7 @@ The Classroom model consists of Seats having a particular attractiveness to each
 The utility function of seat i and student s is defined as the linear combination
 
 ``U(i,s) = b_p * p(i) + b_f * f(i,s) + b_s * s(i,s) + b_a * a(i)``
+
 with coefficients b_p, b_f, b_s, b_a and the 4 utiltiy components
 * p(i): positional utility
 * f(i,s): friendship utility (depending on the neighboring students and their relationship to the decision-maker
