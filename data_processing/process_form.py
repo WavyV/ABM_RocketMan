@@ -162,7 +162,7 @@ def agent_attribute_gen(hist_data, scale_to=None, noise_std_dev=0.25):
             continue
 
         # Scale the noisy value within the given scale.
-        if scale is not None:
+        if scale_to is not None:
             min_val, max_val = scale_to
             yield scale(old_value, bin_min, bin_max, min_val, max_val)
         else:
