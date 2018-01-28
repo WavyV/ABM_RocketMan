@@ -7,7 +7,7 @@ In this project an Agent-Based Model (ABM) of the seating process in classrooms 
 * ``run_model.py`` provides methods to run model simulations. Default model inputs (position utilities, sociabilities, friendship) can be loaded from ``model_input``.
 * ``animation.py`` visualizes the seating process of a simulation (loading the simulation data from ``animation_data``).
 * ``model_comparison.py`` provides methods to analyse and compare model outputs (seating patterns).
-* ``parameter_estimation.py`` implements the estimation of utility coefficients using the SPSA algorithm together with the collected data. The. results (used coefficients and the respected errors) are saved to ``model_output/parameter_estimation``
+* ``parameter_estimation.py`` implements the estimation of utility coefficients using the SPSA algorithm together with the collected data. Results (used coefficients and the respected errors) are saved to ``model_output/parameter_estimation``
 * ``social`` provides methods to generate realistic social networks.
 * ``data-collection`` contains the implementation of the online survey.
 * ``data`` contains the results from the online survey conducted during UvA lectures.
@@ -18,6 +18,7 @@ In this project an Agent-Based Model (ABM) of the seating process in classrooms 
 The Classroom model consists of Seats having a particular attractiveness to each Student. Students are entering the classroom one by one every time step and choose the seat with the highest utility. This process continues until the total number of students in the class is reached or all seats are taken.
 
 The utility function of seat i and student s is defined as the linear combination
+
 ``U(i,s) = b_p * p(i) + b_f * f(i,s) + b_s * s(i,s) + b_a * a(i)``
 with coefficients b_p, b_f, b_s, b_a and the 4 utiltiy components
 * p(i): positional utility
@@ -31,10 +32,10 @@ with coefficients b_p, b_f, b_s, b_a and the 4 utiltiy components
 Important attributes:
 
 * classroom design as an instance of the ClassroomDesign class.
-* coefficients of the utility function (default: [0.25, 0.25, 0.25, 0.25]
-* a sequence of sociability values from which the sociability attribute of a new student is determined (default: sequence with values drawn from a uniform distribution of range [0,1])
-* degree sequence (number of friends per student) based on which the social network is generated. (default: random Erdos-Renyi-Network)
-* seed for random number generation (default: 0)
+* coefficients of the utility function (default: [0.25, 0.25, 0.25, 0.25])
+* a sequence of sociability values from which the sociability attribute of a new student is determined. (Default: sequence with values drawn from a uniform distribution of range [0,1])
+* degree sequence (number of friends per student) based on which the social network is generated. (Default: random Erdos-Renyi-Network)
+* seed for random number generation. (Default: 0)
 
 The maxiumum number of students entering the classroom is set to the number of students in the social network. If no network is used it corresponds to the total number of seats in the classroom.
 
@@ -95,11 +96,11 @@ And then you can visualize the seating process of the generated data with:
 
 During the animation some keys allow you to edit the iteration procedure:
 
-p: pause/resume the animation
-0: move to the start of the animation
-e: move to the end of the animation
-←: move 1 iteration left
-→: move 1 iteration right
-a: move 10 iteration left
-d: move 10 iteration right
+* p: pause/resume the animation
+* 0: move to the start of the animation
+* e: move to the end of the animation
+* ←: move 1 iteration left
+* →: move 1 iteration right
+* a: move 10 iteration left
+* d: move 10 iteration right
 
