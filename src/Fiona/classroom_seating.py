@@ -1,10 +1,9 @@
-#!/usr/bin/python3
-
 from mesa import Agent, Model
 from mesa.time import RandomActivation
 from mesa.space import MultiGrid
-import random
+#import random
 import numpy as np
+import network
 
 
 class Student(Agent):
@@ -29,61 +28,73 @@ class Student(Agent):
 
         """ currently not used """
         self.will_to_change_seat = False
-        self.moving_threshold = 5 # TODO: think about appropriate value!
-        self.moving_prob = 0.2 # TODO: think about appropriate value!
+        self.moving_threshold = 1
+        self.moving_prob = 0.2
 
 
 
     """
     The seat selection procedure
+
+    Args:
+        seat_pos: predetermined position of the seat to choose. If this parameter is specified utilities are ignored.
+        old_seat: current seat of the student making the seating decision. If this parameter is specified the student is enabled to move to a seat with higher utility than his current one.
     """
-    def choose_seat(self, old_seat=None):
+    def choose_seat(self, seat_pos=None, old_seat=None):
 
-        # determine all possible seats to choose from
-        seat_options = []
-        for cell in self.model.grid.coord_iter():
-            content, x, y = cell
-            for agent in content:
-                if type(agent) is Seat and agent.student is None:
-                    seat_options.append(agent)
+        seat_choice = None
+
+        if seat_pos is None:
+            # determine all possible seats to choose from
+            seat_options = []
+            for cell in self.model.grid.coord_iter():
+                content, x, y = cell
+                for agent in content:
+                    if type(agent) is Seat and agent.student is None:
+                        seat_options.append(agent)
 
 
-        if len(seat_options) == 0:
-            print("No empty seats!")
+            if len(seat_options) == 0:
+                print("No empty seats!")
+
+            else:
+                if self.model.random_seat_choice:
+                    # pick one randomly
+                    seat_choice = self.model.rand.choice(seat_options)
+                else:
+                    if old_seat is None:
+                        # pick seat with highest utility (if multiple seats are optimal, choose one of them randomly)
+                        seat_utilities = [seat.get_total_utility(self) for seat in seat_options]
+                        seat_choice = self.model.rand.choice(np.array(seat_options)[np.where(seat_utilities == np.max(seat_utilities))])
+
+                    else:
+                        """ only used if 'will_to_change_seat' is enabled """
+                        # pick seat with highest utiltiy (if multiple seats are optimal, choose one of them randomly)
+                        # include cost to get away from the old seat
+                        seat_utilities = [seat.get_total_utility(self) - old_seat.get_stand_up_cost() for seat in seat_options]
+
+                        if np.max(seat_utilities) - old_seat.get_total_utility(self) > self.moving_threshold:
+                            # if the difference in utility between the current seat and another available seat exceeds the threshold, move to one of the optimal ones
+                            seat_choice = self.model.rand.choice(np.array(seat_options)[np.where(seat_utilities == np.max(seat_utilities))])
 
         else:
-            if self.model.random_seat_choice:
-                # pick one randomly
-                seat_choice = random.choice(seat_options)
-            else:
-                if old_seat is None:
-                    # pick seat with highest utility (if multiple seats are optimal, choose one of them randomly)
-                    seat_utilities = [seat.get_total_utility(self) for seat in seat_options]
-                    seat_choice = random.choice(np.array(seat_options)[np.where(seat_utilities == np.max(seat_utilities))])
+            # get the seat object at the predetermined position
+            for agent in self.model.grid.get_cell_list_contents(seat_pos):
+                if type(agent) is Seat and agent.student is None:
+                    seat_choice = agent
 
-                    # move to the selected seat
-                    seat_choice.student = self
-                    self.model.grid.move_agent(self, seat_choice.pos)
-                    self.initial_happiness = np.max(seat_utilities) - seat_choice.get_accessibility()
-                    self.seated = True
+        if seat_choice is not None:
+            # seat has been selected
+            if old_seat is not None:
+                # make seat available again
+                old_seat.student = None
 
-                else:
-                    """ only used if 'will_to_change_seat' is enabled """
-                    # pick seat with highest utiltiy (if multiple seats are optimal, choose one of them randomly)
-                    # include cost to get away from the old seat
-                    seat_utilities = [seat.get_total_utility(self) - old_seat.get_stand_up_cost() for seat in seat_options]
+            # move to the selected seat
+            seat_choice.student = self
+            self.model.grid.move_agent(self, seat_choice.pos)
+            self.initial_happiness = seat_choice.get_happiness(self)
+            self.seated = True
 
-                    if np.max(seat_utilities) - old_seat.get_total_utility(self) > self.moving_threshold:
-                        # if the difference in utility between the current seat and another available seat exceeds the threshold, move to one of the optimal ones
-                        seat_choice = random.choice(np.array(seat_options)[np.where(seat_utilities == np.max(seat_utilities))])
-
-                        # move to the selected seat
-                        self.model.grid.move_agent(self, seat_choice.pos)
-                        self.initial_happiness = np.max(seat_utilities) - seat_choice.get_accessibility()
-                        seat_choice.student = self
-
-                        # make old seat available again
-                        agent.occupied = False
 
 
 
@@ -100,13 +111,13 @@ class Student(Agent):
 
         if self.will_to_change_seat:
             # with the given probability the student searches for a better seat
-            r = random.random()
+            r = self.model.rand.uniform()
             if r < self.moving_prob:
                 # compare current seat utility with all other available seats. If there is a much better one, move
                 content = self.model.grid.get_cell_list_contents(self.pos)
                 for agent in content:
                     if type(agent) is Seat:
-                        self.choose_seat(agent)
+                        self.choose_seat(old_seat=agent)
 
 
 class Seat(Agent):
@@ -124,16 +135,24 @@ class Seat(Agent):
 
     """
     Get the position utility of the seat, based on its location in the Classroom
-    """
-    def get_position_utility(self):
-        return self.model.classroom.pos_utilities[self.pos]
-
-    """
-    Get the accessibility of the seat defined as the negative number of Students between the seat and the aisle.
-    The student count for the left and right side are compared and the minimum is used.
 
     Returns:
-        u_accessibility: utiltiy (inverse of the number of Students to pass in order to reach the seat)
+        pos_utility: utility in range [0,1]
+    """
+    def get_position_utility(self):
+
+        pos_utility = self.model.classroom.pos_utilities[self.pos]
+        return pos_utility
+
+    """
+    Get the accessibility of the seat based on the number of Students between the seat and the aisle.
+    The student count for the left and right side are compared and the minimum is used.
+    This number is normalized by the maximal possible number of students to pass (dependent on the classroom design)
+    and then substracted from one in order to obtain values between 0 (number of students to be passed is maximal)
+    and 1 (no students to be passed).
+
+    Returns:
+        u_accessibility: utiltiy in range [0,1]
     """
     def get_accessibility(self):
 
@@ -173,7 +192,7 @@ class Seat(Agent):
             # if there is no aisle on the right side, always count the student on the left side
             count_right = np.infty
 
-        u_accessibility = -min(count_right, count_left)
+        u_accessibility = 1 - min(count_right, count_left)/float(self.model.classroom.max_pass)
 
         return u_accessibility
 
@@ -218,20 +237,19 @@ class Seat(Agent):
         return neighborhood
 
     """
-    Get the social utility of the Seat (including friendship and sociability component).
+    Get the social utility of the Seat (including both friendship and sociability component).
     Higher values represent higher attractivity.
-    Based on the social network connections to neighboring Students,
+    Values are based on the social network connections to neighboring Students,
     and the individual sociability of the Student making the decision:
         - The more friends are sitting closeby, the higher the friendship utility.
-        - If the Student is sociable (value = 1), the presence of unfamiliar neighbors increases the utility
-        - If the Student is unsociable (value = -1), the presence of unfamiliar neighbors decreases the utility
+        - The more sociable the student, the higher the utility in case of unfamiliar neighbors
 
     Args:
         student: the student making the seating choice
 
     Returns:
-        u_friendship: friendship component of the social utility
-        u_sociability: sociability component of the social utility
+        u_friendship: friendship component of the social utility (in range [0,1])
+        u_sociability: sociability component of the social utility (in range [0,1])
     """
     def get_social_utility(self, student):
 
@@ -256,6 +274,12 @@ class Seat(Agent):
                     if friendship == 0:
                         u_sociability += self.model.sociability_interaction_matrix[x,y] * student.sociability
 
+        # shift the sociability term to get values in range [0,1]
+        # 0 means aversion
+        # 0.5 means indifference (either due to the student's social indifference or due to empty seats)
+        # 1 means attraction
+        u_sociability += 0.5
+
         return u_friendship, u_sociability
 
     """
@@ -272,6 +296,21 @@ class Seat(Agent):
 
         return total_utility
 
+    """
+    Get the student's happiness for this Seat as a linear combination of position, friendship and sociability components.
+    It is assumed that the accessibility does not influence the happiness one the student is seated.
+
+    Returns:
+        happiness: total seat utility except for the accessibility component
+    """
+    def get_happiness(self, student):
+
+        friendship_component, sociability_component = self.get_social_utility(student)
+        coef_p, coef_f, coef_s, coef_a = self.model.coefs
+        total_utility = coef_p * self.get_position_utility() + coef_f * friendship_component + coef_s * sociability_component
+
+        return total_utility
+
 
 
 class ClassroomModel(Model):
@@ -280,39 +319,45 @@ class ClassroomModel(Model):
     Create a classroom model
 
     Args:
-        N: maximal number of students entering the classroom
         classroom_design: instance of ClassroomDesign defining the layout and position-dependent seat utilities of the classroom
         coefs: list [coef_p, coef_f, coef_s, coef_a] defining the coefficients for the position, friendship, sociability and accessibility components in the utility function
+        sociability_distr: probability distribution of the students' sociability attribute
         social_network: the underlying social network as a connectivity matrix (1 means friendship, 0 means indifference). If not given, all connections are set to zero.
         seed: seed for the random number generation
     """
-    def __init__(self, N, classroom_design, coefs, social_network=None, seed=0):
+    def __init__(self, classroom_design, coefs=[0.25,0.25,0.25,0.25], sociability_distr=[1/3, 1/3, 1/3], social_network=None, seed=0):
 
-        self.max_num_agents = N
         self.classroom = classroom_design
-        self.coefs = coefs
+
+        # assure that the coefficients sum up to one
+        self.coefs = [(c/sum(coefs) if sum(coefs) > 0 else 0) for c in coefs]
+
+        # assure that the probabilities sum up to one
+        self.sociability_distr = [(s/sum(sociability_distr) if sum(sociability_distr) > 0 else 0) for s in sociability_distr]
 
         # if all utility components are set to zero, seat choices are completely random.
         self.random_seat_choice = np.all(coefs == 0)
 
-        if social_network is None and coefs[1] == 0:
-            # no social connections
-            self.social_network = np.zeros((N,N))
-        elif social_network is None and coefs[1] != 0:
+        if social_network is None:
             # create a random network
-            self.social_network = np.random.randint(2, size=(N,N))
+            self.max_num_agents = self.classroom.seat_count
+            self.social_network = network.erdos_renyi(self.max_num_agents, 0.2)
         else:
+            self.max_num_agents = social_network.shape[0]
             self.social_network = social_network
 
-        random.seed(seed)
 
-        self.grid = MultiGrid(classroom_design.width, classroom_design.num_rows, False)
+
+        self.rand = np.random.RandomState(seed)
+
+        self.grid = MultiGrid(self.classroom.width, self.classroom.num_rows, False)
         self.schedule = RandomActivation(self)
 
-        # matrices that determine the importance of neighboring seats for the social utility
-        # They need to have the same shape
-        self.friendship_interaction_matrix = np.array([[0, 0, 0], [1, 0, 1], [0, 0, 0]]).T
-        self.sociability_interaction_matrix = np.array([[0, 0, 0], [1, 0, 1], [0, 0, 0]]).T
+        # Matrices that determine the importance of neighboring seats for the social utility.
+        # They need to have the same shape.
+        # Values are scaled such that the resulting friendship and sociability terms are within range [0,1].
+        self.friendship_interaction_matrix = np.array([[0, 0, 0], [0.5, 0, 0.5], [0, 0, 0]]).T
+        self.sociability_interaction_matrix = np.array([[0, 0, 0], [0.25, 0, 0.25], [0, 0, 0]]).T
 
         # initialize seats (leave aisles free)
         for x in range(self.classroom.width):
@@ -322,6 +367,7 @@ class ClassroomModel(Model):
                         # create new seat
                         seat = Seat(self)
                         self.grid.place_agent(seat, (x,y))
+
 
 
     """
@@ -334,7 +380,8 @@ class ClassroomModel(Model):
         if n < self.max_num_agents:
             # create student
             if self.coefs[2] != 0:
-                sociability = random.choice([-1,0,1])
+                # sample from the sociability distribution
+                sociability = self.rand.choice([-1,0,1], p=self.sociability_distr)
                 student = Student(n, self, sociability)
             else:
                 student = Student(n, self)
@@ -342,10 +389,46 @@ class ClassroomModel(Model):
             self.schedule.add(student)
 
             # place new student randomly at one of the entrances
-            initial_pos = random.choice(self.classroom.entrances)
+            initial_pos = self.classroom.entrances[self.rand.randint(len(self.classroom.entrances))]
             self.grid.place_agent(student, initial_pos)
 
         self.schedule.step()
+
+    """
+    Advance the model by one step. If the maximum student number is not reached yet, create a new student and place him at the given position.
+
+    Args:
+        seat_pos: position at which the new student should be seated
+    """
+    def step_predetermined_seating(self, seat_pos):
+
+        n = self.schedule.get_agent_count()
+        if n < self.max_num_agents:
+            # if max student count is not reached, create student
+            student = Student(n, self)
+            self.schedule.add(student)
+
+            # place new student at the predetermined seat
+            student.choose_seat(seat_pos)
+
+    """
+    Get the current seating distribution in the classroom. Ones represent students, zeros represent available seats.
+    Aisles are stripped.
+
+    Returns:
+        model_state: binary matrix where each entry refers to a seat's state
+    """
+    def get_binary_model_state(self):
+
+        model_state = np.zeros((self.classroom.width, self.classroom.num_rows))
+        for student in self.schedule.agents:
+            model_state[student.pos] = 1
+
+        # remove aisles from the matrix
+        model_state = np.delete(model_state, self.classroom.aisles_x, axis=0)
+        model_state = np.delete(model_state, self.classroom.aisles_y, axis=1)
+
+        return model_state
 
 
 
@@ -388,7 +471,22 @@ class ClassroomDesign():
             self.entrances = entrances
 
         # define utility/attractivity of each seat location
-        if pos_utilities is not None and pos_utilities.shape == (self.width, num_rows):
-            self.pos_utilities = pos_utilities
+        if pos_utilities is not None and pos_utilities.shape == (self.width, num_rows) and np.max(pos_utilities) > 0:
+            # scale the given attractivity weights to assure values in range [0,1]
+            self.pos_utilities = pos_utilities/float(np.max(pos_utilities))
         else:
             self.pos_utilities = np.zeros((self.width, num_rows))
+
+        # determine the maximal number of seats to be passed in order to get to a seat
+        max_pass_per_block = []
+        for i,b in enumerate(blocks):
+            if i > 0 and i < len(blocks)-1:
+                # for inner blocks with aisles on the left and right, only half of the row needs to be passed
+                max_pass_per_block.append(int((b-1)/2))
+            else:
+                # for outer blocks with access to only one aisle, the entire row needs to be passed
+                max_pass_per_block.append(b-1)
+        self.max_pass = max(max_pass_per_block)
+
+        # determine the total number of seats
+        self.seat_count = (self.width - len(self.aisles_x)) * (self.num_rows - len(self.aisles_y))

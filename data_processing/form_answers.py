@@ -6,11 +6,8 @@ import numpy as np
 
 """
 Function for extracting and plotting data from the questionnaire.
-
 Functions are in the order they appear in the questionnaire.
-
 Usage as a script to visualize a form's responses:
-
     python3 form_answers.py fri-form.json
 """
 
@@ -28,7 +25,6 @@ def load(name):
 
 def get_int_answers(data, question_key, leq_5=False):
     """Return a list of int data with given question key.
-
     If `leq_5` each int must be less than or equal to 5.
     """
     answers = map(lambda x: x.get(question_key), data)
@@ -42,7 +38,6 @@ def get_int_answers(data, question_key, leq_5=False):
 def answers_and_hist(data, question_key, bins, plot=False, title=None,
                      leq_5=False):
     """Return a list of int data with given key.
-
     If `plot`, plot a histogram of the data.
     For `leq_5` see the function `get_int_answers`.
     """
@@ -58,7 +53,6 @@ def answers_and_hist(data, question_key, bins, plot=False, title=None,
 
 def get_seats(data, key, plot=False, title=None):
     """Get seats location matrix using the given question key.
-
     NOTE: aisles are not considered in the returned matrix.
     If `plot`, plot a histogram of the location matrix.
     """
@@ -102,7 +96,6 @@ def course_friends(data, plot=False):
 
 def know_neighbour(data, plot=False):
     """Return a list for left data and a list for right data.
-
     If `plot`, plot a histogram of how well students know neighbours.
     """
     left = get_int_answers(data, "knowleft", leq_5=True)
@@ -170,7 +163,6 @@ def importance_of_accessibility(data, plot=False):
 
 def get_actual_seats(data, plot=False):
     """Returns a matrix of where students said they sat.
-
     If `plot`, plot returned data using imshow.
     """
     return get_seats(data, "seatlocation", plot=plot,

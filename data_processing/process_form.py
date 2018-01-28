@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
 
-import form_answers
-import taken_seats
+from data_processing import form_answers
+from data_processing import taken_seats
 
 """
 Process form answers into useful information for the model.

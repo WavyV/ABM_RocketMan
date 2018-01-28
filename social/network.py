@@ -63,7 +63,7 @@ def walts_graph(degree_sequence, plot):
     # for i in range(0, N):
     #     available_connections[i] = int(random.randint(0, 6)) # At this time it's random, should actually be taken from distribution
 
-    print('Maximum number of connections agents can have:', available_connections)
+    #print('Maximum number of connections agents can have:', available_connections)
 
     # We loop through the agents and set the number of connections to what it should be (if possible)
     for i in range(0, N):
@@ -90,8 +90,11 @@ def walts_graph(degree_sequence, plot):
 
         # The number of connections agent i has made is now changed. If it was able to connect to the desired amount of other
         # agents this value is zero. If it could not make all the connections it desired this value is greater than 0.
-        if available_connections[i] > 0:
-            available_connections[i] -= k + 1
+
+        """ k is not defined here!!!??? """
+        #if available_connections[i] > 0:
+        #    available_connections[i] -= k + 1 
+
 
     # generate network
     G = nx.from_numpy_matrix(C)
