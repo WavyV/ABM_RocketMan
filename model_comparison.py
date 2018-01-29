@@ -94,6 +94,9 @@ def count_lbp(model_state):
 
 """
 Calculates the entropy profile of a model state.
+Advantages:
+    - Invariant to size, reflections, translations
+    - Captures large and small scale structure
 
 Args:
     model_state: seating distribution as a binary matrix of seats
@@ -154,11 +157,58 @@ def calculate_mse(list1, list2):
 
 
 """
+Generates a profile of a set of models with selected method.
+
+Args:
+    models: A list of models to analyse. Assumes all be the same shape.
+    method: {'lbp', 'cluster', 'entropy'} The method to use.
+
+Returns:
+    A list of counts that is the average profile of the given models.
+
+"""
+def generate_profile(models, method='lbp'):
+    try:
+        val = _compare_dict[method]
+
+    except KeyError:
+        raise ValueError("Method must be 'lbp', 'cluster', or 'entropy'.")
+
+    # reduce all the models first
+    reduced_models = []
+    for m in models:
+        reduced_models.append(reduce_model_state(m))
+
+    # setup profile depending on method type
+    if method == 'lbp':
+        profile = np.zeros(256)
+        f = count_lbp
+        args = []
+    elif method == 'cluster':
+        profile = np.zeros(reduced_models[0].shape[1]+1)
+        f = count_clusters
+        args = (models[0].classroom.aisles_x)
+    elif method == 'entropy':
+        profile = np.zeros(min(reduced_models[0].shape))
+        f = get_entropy
+        args = []
+
+    # build profile
+    for rm in reduced_models:
+        if method == 'cluster':
+            profile += f(rm, args)
+        else:
+            profile += f(rm)
+
+    return profile / len(models)
+
+
+"""
 Compares two seating distributions by computing the Mean Square Error between their profiles.
 
 Args:
-    model_state_1: seating distribution as a binary matrix of seats
-    model_state_2: seating distribution as a binary matrix of seats
+    model_state_1: Seating distribution as a binary matrix of seats
+    model_state_2: Seating distribution as a binary matrix of seats
     method: {'lbp', 'cluster', 'entropy'} The method to be used to compute the profiles
     aisles: If using the 'cluster' method, you can
         specify where the aisles are as a list. Default [0].
@@ -174,7 +224,7 @@ def compare(model_state_1, model_state_2, method='lbp', aisles=[0]):
         raise ValueError("Method must be 'lbp', 'cluster', or 'entropy'.")
 
     if model_state_1.ndim != 2 or model_state_2.ndim != 2:
-        raise ValueError("model must be 2D.")
+        raise ValueError("Models must be 2D.")
 
     if method == 'lbp':
         # Use the Local Binary Method
