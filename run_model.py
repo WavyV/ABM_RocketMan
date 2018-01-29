@@ -111,27 +111,48 @@ Returns:
     info: 3D array comprising the 4 matrices 'seat_utilities', 'student_IDs', 'student_sociabilities' and 'initial_happiness'
 """
 def get_model_state(model):
-    image = -0.8*np.ones((model.grid.height, model.grid.width))
-    info = np.zeros((model.grid.height, model.grid.width, 4))
+    image = -0.8*np.ones((model.classroom.num_rows, model.classroom.width))
+    info = np.zeros((model.classroom.num_rows, model.classroom.width, 4))
 
-    for cell in model.grid.coord_iter():
-        content, x, y = cell
-        for agent in content:
-            if type(agent) is Seat:
-                # save seat utility
-                info[y,x,0] = model.classroom.pos_utilities[x,y]
-                if agent.student is None:
-                    # seat is available. Determine level of blocking
-                    image[y,x] = -2 + agent.accessibility
-                else:
-                    # seat is occupied. Set value based on the student's happiness
-                    image[y,x] = 1
-                    image[y,x] += agent.get_happiness(agent.student)
+    for seat in model.seats.flat:
+        if type(seat) != Seat:
+            continue
 
-                    # save student's properties
-                    info[y,x,1] = agent.student.unique_id
-                    info[y,x,2] = agent.student.sociability
-                    info[y,x,3] = agent.student.initial_happiness
+        x, y = seat.pos
+
+        info[y,x,0] = model.classroom.pos_utilities[x,y]
+        if seat.student is None:
+            # seat is available. Determine level of accessibility
+            image[y,x] = -2 + seat.accessibility
+        else:
+            # seat is occupied. Set value based on the student's happiness
+            image[y,x] = 1
+            image[y,x] += seat.get_happiness(seat.student)
+
+            # save student's properties
+            info[y,x,1] = seat.student.unique_id
+            info[y,x,2] = seat.student.sociability
+            info[y,x,3] = seat.student.initial_happiness
+
+
+    # for cell in model.grid.coord_iter():
+    #     content, x, y = cell
+    #     for agent in content:
+    #         if type(agent) is Seat:
+    #             # save seat utility
+    #             info[y,x,0] = model.classroom.pos_utilities[x,y]
+    #             if agent.student is None:
+    #                 # seat is available. Determine level of blocking
+    #                 image[y,x] = -2 + agent.accessibility
+    #             else:
+    #                 # seat is occupied. Set value based on the student's happiness
+    #                 image[y,x] = 1
+    #                 image[y,x] += agent.get_happiness(agent.student)
+    #
+    #                 # save student's properties
+    #                 info[y,x,1] = agent.student.unique_id
+    #                 info[y,x,2] = agent.student.sociability
+    #                 info[y,x,3] = agent.student.initial_happiness
 
     for pos in model.classroom.entrances:
         image[pos[1],pos[0]] = -2
