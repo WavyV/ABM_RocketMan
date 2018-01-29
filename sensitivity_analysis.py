@@ -35,7 +35,7 @@ def run(class_size, b1, b2, b3, b4):
     final_state = run_model.final_model_state(model, MODEL_ITERATIONS)
     comparison_values = []
     for comparison, comparison_f in COMPARISONS.items():
-        comparison_value = sum(comparison_f(final_state[0]))
+        comparison_value = sum(comparison_f(final_state))
         print("{} comparison: {}".format(comparison, comparison_value))
         comparison_values.append(comparison_value)
     return comparison_values

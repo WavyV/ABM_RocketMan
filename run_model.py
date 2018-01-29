@@ -188,7 +188,7 @@ def final_model_state(model, num_iterations):
     """Return the final model state after running for given iterations."""
     for _ in range(num_iterations):
         model.step()
-    return get_model_state(model)
+    return model.get_binary_model_state()
 
 
 if __name__ == "__main__":
