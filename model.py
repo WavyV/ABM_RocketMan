@@ -454,7 +454,7 @@ class ClassroomModel():
         model_state = np.delete(model_state, self.classroom.aisles_x, axis=0)
         model_state = np.delete(model_state, self.classroom.aisles_y, axis=1)
 
-        return model_state
+        return model_state.T
 
 
 
