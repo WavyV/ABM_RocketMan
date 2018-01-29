@@ -1,13 +1,13 @@
-from model import *
-from data_processing import process_form
-import pickle
 import sys
 from os import path
+import pickle
+from model import *
+from data_processing import process_form
 
 MODEL_DATA_PATH = "animation_data"
 FILE_NAME = "model_data.json"
-NUM_ITERATIONS = 300
-CLASS_SIZE = 300
+NUM_ITERATIONS = 150
+CLASS_SIZE = 150
 MODEL_COEFS = [[1,0,0,1], [1,0,1,1], [1,1,1,1]]
 
 MODEL_INPUT_PATH = "model_input"
@@ -135,25 +135,6 @@ def get_model_state(model):
             info[y,x,3] = seat.student.initial_happiness
 
 
-    # for cell in model.grid.coord_iter():
-    #     content, x, y = cell
-    #     for agent in content:
-    #         if type(agent) is Seat:
-    #             # save seat utility
-    #             info[y,x,0] = model.classroom.pos_utilities[x,y]
-    #             if agent.student is None:
-    #                 # seat is available. Determine level of blocking
-    #                 image[y,x] = -2 + agent.accessibility
-    #             else:
-    #                 # seat is occupied. Set value based on the student's happiness
-    #                 image[y,x] = 1
-    #                 image[y,x] += agent.get_happiness(agent.student)
-    #
-    #                 # save student's properties
-    #                 info[y,x,1] = agent.student.unique_id
-    #                 info[y,x,2] = agent.student.sociability
-    #                 info[y,x,3] = agent.student.initial_happiness
-
     for pos in model.classroom.entrances:
         image[pos[1],pos[0]] = -2
 
@@ -209,6 +190,7 @@ if __name__ == "__main__":
     models = []
     for coefs in MODEL_COEFS:
         models.append(init_default_model(coefs, CLASS_SIZE))
+
     try:
         generate_data(models, NUM_ITERATIONS, path.join(MODEL_DATA_PATH, sys.argv[1]))
     except:

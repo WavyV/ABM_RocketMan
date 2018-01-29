@@ -1,5 +1,5 @@
-import numpy as np
 from collections import deque
+import numpy as np
 from social import network
 
 """
@@ -98,7 +98,6 @@ class Student():
 
             # move to the selected seat
             seat_choice.student = self
-            # self.model.grid.move_agent(self, seat_choice.pos)
             self.initial_happiness = seat_choice.get_happiness(self)
             self.seated = True
 
@@ -233,11 +232,6 @@ class Seat():
         to_center_x = int(size_x/2)
         to_center_y = int(size_y/2)
 
-
-
-        # for i in range(max(0, x - to_center_x), min(x + to_center_x, self.model.classroom.width)):
-
-            # for j in range(max(0, y - to_center_y), min(y + to_center_y ,self.model.num_rows))
         for i in range(size_x):
             for j in range(size_y):
 
@@ -245,9 +239,7 @@ class Seat():
 
                 if (coords[0] < 0) or (coords[0] > self.model.classroom.width) or (coords[1] < 0) or (coords[1] > self.model.classroom.num_rows):
                     continue
-                # Skip if new coords out of bounds.
-                # if self.model.grid.out_of_bounds(coords):
-                    # continue
+
                 else:
                     try:
                         seat = self.model.seats[coords]
@@ -383,10 +375,6 @@ class ClassroomModel():
             else:
                 raise ValueError("'sociability_sequence' and 'degree_sequence' must have same length")
 
-
-        # self.grid = MultiGrid(self.classroom.width, self.classroom.num_rows, False)
-        # self.schedule = RandomActivation(self)
-
         # Matrices that determine the importance of neighboring seats for the social utility.
         # They need to have the same shape.
         # Values should sum up to one so that the resulting friendship and sociability terms are within range [0,1].
@@ -402,7 +390,6 @@ class ClassroomModel():
                     if not y in self.classroom.aisles_y:
                         # create new seat
                         seat = Seat(self, (x, y))
-                        # self.grid.place_agent(seat, (x,y))
                         self.empty_seats.append(seat)
                         self.seats[x, y] = seat
 
@@ -414,7 +401,6 @@ class ClassroomModel():
     def step(self):
 
         # as long as the max number of students is not reached, add a new one
-        # n = self.schedule.get_agent_count()
         n = len(self.students)
         if n < self.max_num_agents:
             # create student
@@ -425,15 +411,10 @@ class ClassroomModel():
             else:
                 student = Student(n, self)
 
-            # self.schedule.add(student)
+            # add student and update
             self.students.append(student)
-
-            # place new student randomly at one of the entrances
-            # initial_pos = self.classroom.entrances[self.rand.randint(len(self.classroom.entrances))]
-            # self.grid.place_agent(student, initial_pos)
             student.step()
 
-        # self.schedule.step()
 
     """
     Advance the model by one step. If the maximum student number is not reached yet, create a new student and place him at the given position.
@@ -442,13 +423,10 @@ class ClassroomModel():
         seat_pos: position at which the new student should be seated
     """
     def step_predetermined_seating(self, seat_pos):
-
-        # n = self.schedule.get_agent_count()
         n = len(self.students)
         if n < self.max_num_agents:
             # if max student count is not reached, create student
             student = Student(n, self)
-            # self.schedule.add(student)
             self.students.append(student)
 
             # place new student at the predetermined seat

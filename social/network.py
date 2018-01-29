@@ -1,8 +1,8 @@
+import collections
+import scipy
+import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
-import numpy as np
-import scipy
-import collections
 
 """ args
 groups: list of groups
@@ -93,7 +93,7 @@ def walts_graph(degree_sequence, plot):
 
         """ k is not defined here!!!??? """
         #if available_connections[i] > 0:
-        #    available_connections[i] -= k + 1 
+        #    available_connections[i] -= k + 1
 
 
     # generate network

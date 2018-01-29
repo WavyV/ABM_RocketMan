@@ -1,14 +1,14 @@
+import sys
+from os import path
+
+import pickle
+import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
-import pickle
-import sys
 from matplotlib.text import OffsetFrom
-from os import path
-import numpy as np
 
 MODEL_DATA_PATH = "animation_data"
 FILE_NAME = "model_data.json"
-NUM_ITERATIONS = 300
 
 """
 Animate the seating process of previously generated simulation data
@@ -159,4 +159,4 @@ if __name__ == "__main__":
         a.set_visible(False)
         annotes.append(a)
 
-    animate_models(NUM_ITERATIONS)
+    animate_models(len(all_model_states[0]))
