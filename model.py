@@ -508,17 +508,17 @@ class ClassroomDesign():
         # define utility/attractivity of each seat location
         # if the utility matrix does not include aisles, insert zeros at the respective positions
 
-        # if pos_utilities.shape == (self.width - len(self.aisles_x), num_rows - len(self.aisles_y)):
-        #     for x in self.aisles_x:
-        #         if x < pos_utilities.shape[0]:
-        #             pos_utilities = np.insert(pos_utilities, x, 0, axis=0)
-        #         else:
-        #             pos_utilities = np.concatenate((pos_utilities, np.zeros((1,pos_utilities.shape[1]))), axis=0)
-        #     for y in self.aisles_y:
-        #         if y < pos_utilities.shape[1]:
-        #             pos_utilities = np.insert(pos_utilities, y, 0, axis=1)
-        #         else:
-        #             pos_utilities = np.concatenate((pos_utilities, np.zeros((pos_utilities.shape[0],1))), axis=1)
+        if pos_utilities is not None and pos_utilities.shape == (self.width - len(self.aisles_x), num_rows - len(self.aisles_y)):
+            for x in self.aisles_x:
+                if x < pos_utilities.shape[0]:
+                    pos_utilities = np.insert(pos_utilities, x, 0, axis=0)
+                else:
+                    pos_utilities = np.concatenate((pos_utilities, np.zeros((1,pos_utilities.shape[1]))), axis=0)
+            for y in self.aisles_y:
+                if y < pos_utilities.shape[1]:
+                    pos_utilities = np.insert(pos_utilities, y, 0, axis=1)
+                else:
+                    pos_utilities = np.concatenate((pos_utilities, np.zeros((pos_utilities.shape[0],1))), axis=1)
 
         if pos_utilities is not None and pos_utilities.shape == (self.width, num_rows) and np.max(pos_utilities) > 0:
             # scale the given attractivity weights to assure values in range [0,1]

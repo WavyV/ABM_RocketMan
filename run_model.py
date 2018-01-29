@@ -8,7 +8,7 @@ MODEL_DATA_PATH = "animation_data"
 FILE_NAME = "model_data.json"
 NUM_ITERATIONS = 150
 CLASS_SIZE = 150
-MODEL_COEFS = [[1,0,0,1], [1,0,1,1], [1,1,1,1]]
+MODEL_COEFS = [[1,0,0,1], [1,0,2,1], [1,2,2,1]]
 
 MODEL_INPUT_PATH = "model_input"
 DEFAULT_DEG_SEQ = "_degree_sequence.pkl"
@@ -90,8 +90,7 @@ def init_default_model(coefs, class_size, seed=0):
     sociability_sequence = get_default_sociability_sequence(class_size)
 
     # create the model
-    #model = ClassroomModel(classroom, coefs, sociability_sequence=sociability_sequence, degree_sequence=degree_sequence, seed=seed)
-    model = ClassroomModel(classroom, coefs, seed=seed)
+    model = ClassroomModel(classroom, coefs, sociability_sequence=sociability_sequence, degree_sequence=degree_sequence, seed=seed)
 
     return model
 
