@@ -184,6 +184,13 @@ def generate_data(models, num_iterations, data_path=None):
         pickle.dump(data, f)
 
 
+def final_model_state(model, num_iterations):
+    """Return the final model state after running for given iterations."""
+    for _ in range(num_iterations):
+        model.step()
+    return get_model_state(model)
+
+
 if __name__ == "__main__":
 
     # initialize and run models with given utility coefficients [position, friendship, sociability, accessibility]
