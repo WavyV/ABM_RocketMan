@@ -37,6 +37,7 @@ class TheaterModel(Model):
         self.friendships = np.zeros([students, students], dtype=bool)
         self.fill_graph(sparsity)
 
+        # self.theater = np.empty((num_rows, sum(blocks))
         self.theater = np.zeros([num_of_rows, sum(blocks)], dtype=bool)
         self.paths = len(blocks) - 1
 

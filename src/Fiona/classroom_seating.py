@@ -33,20 +33,21 @@ class Student(Agent):
         self.moving_prob = 0.2 # TODO: think about appropriate value!
 
 
+    """
+    Helper function to get the seat at some specified coordinates
+    """
+    def get_seat(self, pos):
+        x, y = pos
+        return self.model.seats[x, y]
+
+
 
     """
     The seat selection procedure
     """
     def choose_seat(self, old_seat=None):
 
-        # determine all possible seats to choose from
-        seat_options = []
-        for cell in self.model.grid.coord_iter():
-            content, x, y = cell
-            for agent in content:
-                if type(agent) is Seat and agent.student is None:
-                    seat_options.append(agent)
-
+        seat_options = self.model.empty_seats
 
         if len(seat_options) == 0:
             print("No empty seats!")
@@ -64,8 +65,14 @@ class Student(Agent):
                     # move to the selected seat
                     seat_choice.student = self
                     self.model.grid.move_agent(self, seat_choice.pos)
-                    self.initial_happiness = np.max(seat_utilities) - seat_choice.get_accessibility()
+                    self.initial_happiness = np.max(seat_utilities) - seat_choice.accessibility
                     self.seated = True
+                    # update the accessibility of all seats in this row
+                    for s in self.model.seats[:, seat_choice.pos[1]]:
+                        if type(s) == Seat:
+                            s.update_accessibility()
+
+                    self.model.empty_seats.remove(seat_choice)
 
                 else:
                     """ only used if 'will_to_change_seat' is enabled """
@@ -79,8 +86,15 @@ class Student(Agent):
 
                         # move to the selected seat
                         self.model.grid.move_agent(self, seat_choice.pos)
-                        self.initial_happiness = np.max(seat_utilities) - seat_choice.get_accessibility()
+                        self.initial_happiness = np.max(seat_utilities) - seat_choice.accessibility
                         seat_choice.student = self
+                        # update the accessibility of all seats in this row
+                        for s in seat_choice.row_left + seat_choice.row_right:
+                            try:
+                                self.get_seat(s).update_accessibility()
+                            except:
+                                continue
+                        self.model.empty_seats.remove(seat_choice)
 
                         # make old seat available again
                         agent.occupied = False
@@ -117,16 +131,37 @@ class Seat(Agent):
     Args:
         model: the associated ClassroomModel
     """
-    def __init__(self, model):
+    def __init__(self, model, pos):
 
         self.model = model
         self.student = None
+        # self.pos = pos
+
+        self.accessibility = 0
+
+        # find the nearest aisles left and right
+        x, y = pos
+        if x < model.classroom.aisles_x[0]:
+            # then no aisle to the left
+            self.row_left = None
+        else:
+            left_aisle = max([a for a in model.classroom.aisles_x if a < x])
+            self.row_left = [(i, y) for i in range(left_aisle+1, x)]
+
+        if x > model.classroom.aisles_x[-1]:
+            # then no aisle to the right
+            self.row_right = None
+        else:
+            right_aisle = min([a for a in model.classroom.aisles_x if a > x])
+            self.row_right = [(i, y) for i in range(x+1, right_aisle)]
+
 
     """
     Get the position utility of the seat, based on its location in the Classroom
     """
     def get_position_utility(self):
         return self.model.classroom.pos_utilities[self.pos]
+
 
     """
     Get the accessibility of the seat defined as the negative number of Students between the seat and the aisle.
@@ -135,47 +170,29 @@ class Seat(Agent):
     Returns:
         u_accessibility: utiltiy (inverse of the number of Students to pass in order to reach the seat)
     """
-    def get_accessibility(self):
-
+    def update_accessibility(self):
         x, y = self.pos
+        count_left, count_right = 0, 0
 
-        dist_to_aisles = np.array([(x - i) for i in self.model.classroom.aisles_x])
-
-        # determine the number of people sitting between this seat and the closest aisle on the left side
-        dist_to_aisles_left = dist_to_aisles[np.where(dist_to_aisles > 0)]
-        if len(dist_to_aisles_left) > 0:
-            aisles_left = np.array(self.model.classroom.aisles_x)[np.where(dist_to_aisles > 0)]
-            aisle_left = aisles_left[np.argmin(dist_to_aisles_left)]
-            row_left = [(i, y) for i in range(aisle_left + 1, x)]
-
-            count_left = 0
-            for agent in self.model.grid.get_cell_list_contents(row_left):
-                if type(agent) is Student:
+        if self.row_left != None:
+            for cell in self.row_left:
+                if self.model.seats[cell].student:
+                # for agent in self.model.grid.get_cell_list_contents(cell):
+                #     if type(agent) is Student:
                     count_left += 1
-
         else:
-            # if there is no aisle on the left side, always count the student on the right side
             count_left = np.infty
 
-        # determine the number of people sitting between this seat and the closest aisle on the right side
-        dist_to_aisles_right = dist_to_aisles[np.where(dist_to_aisles < 0)]
-        if len(dist_to_aisles_right) > 0:
-            aisles_right = np.array(self.model.classroom.aisles_x)[np.where(dist_to_aisles < 0)]
-            aisle_right = aisles_right[np.argmin(abs(dist_to_aisles_right))]
-            row_right = [(i, y) for i in range(x + 1, aisle_right)]
-
-            count_right = 0
-            for agent in self.model.grid.get_cell_list_contents(row_right):
-                if type(agent) is Student:
+        if self.row_right != None:
+            for cell in self.row_right:
+                if self.model.seats[cell].student:
+                # for agent in self.model.grid.get_cell_list_contents(cell):
+                #     if type(agent) is Student:
                     count_right += 1
-
         else:
-            # if there is no aisle on the right side, always count the student on the left side
             count_right = np.infty
 
-        u_accessibility = -min(count_right, count_left)
-
-        return u_accessibility
+        self.accessibility = -min(count_right, count_left)
 
 
     """
@@ -189,7 +206,6 @@ class Seat(Agent):
         neighborhood: matrix containing IDs of neighboring students (-1 means empty or no seat at all)
     """
     def get_neighborhood(self, size_x, size_y):
-
         x, y = self.pos
 
         # assure that size_x and size_y are uneven, so that the neighborhood has one central seat
@@ -211,11 +227,14 @@ class Seat(Agent):
                 if self.model.grid.out_of_bounds(coords):
                     continue
                 else:
-                    for agent in self.model.grid.get_cell_list_contents(coords):
-                        if type(agent) is Student and agent.seated:
-                            neighborhood[i,j] = agent.unique_id
+                    try:
+                        agent = self.model.seats[coords].student
+                        neighborhood[i,j] = agent.unique_id
+                    except:
+                        continue
 
         return neighborhood
+
 
     """
     Get the social utility of the Seat (including friendship and sociability component).
@@ -268,10 +287,9 @@ class Seat(Agent):
 
         friendship_component, sociability_component = self.get_social_utility(student)
         coef_p, coef_f, coef_s, coef_a = self.model.coefs
-        total_utility = coef_p * self.get_position_utility() + coef_f * friendship_component + coef_s * sociability_component + coef_a * self.get_accessibility()
+        total_utility = coef_p * self.get_position_utility() + coef_f * friendship_component + coef_s * sociability_component + coef_a * self.accessibility
 
         return total_utility
-
 
 
 class ClassroomModel(Model):
@@ -291,6 +309,10 @@ class ClassroomModel(Model):
         self.max_num_agents = N
         self.classroom = classroom_design
         self.coefs = coefs
+        self.empty_seats = []
+
+        # referenced as x, y (i.e. column then row!)
+        self.seats = np.empty((self.classroom.width, self.classroom.num_rows), dtype=Seat)
 
         # if all utility components are set to zero, seat choices are completely random.
         self.random_seat_choice = np.all(coefs == 0)
@@ -311,8 +333,8 @@ class ClassroomModel(Model):
 
         # matrices that determine the importance of neighboring seats for the social utility
         # They need to have the same shape
-        self.friendship_interaction_matrix = np.array([[0, 0, 0], [1, 0, 1], [0, 0, 0]]).T
-        self.sociability_interaction_matrix = np.array([[0, 0, 0], [1, 0, 1], [0, 0, 0]]).T
+        self.friendship_interaction_matrix = np.array([[1, 0, 1]]).T
+        self.sociability_interaction_matrix = np.array([[1, 0, 1]]).T
 
         # initialize seats (leave aisles free)
         for x in range(self.classroom.width):
@@ -320,8 +342,10 @@ class ClassroomModel(Model):
                 for y in range(self.classroom.num_rows):
                     if not y in self.classroom.aisles_y:
                         # create new seat
-                        seat = Seat(self)
+                        seat = Seat(self, (x, y))
                         self.grid.place_agent(seat, (x,y))
+                        self.empty_seats.append(seat)
+                        self.seats[x][y] = seat
 
 
     """
@@ -344,8 +368,9 @@ class ClassroomModel(Model):
             # place new student randomly at one of the entrances
             initial_pos = random.choice(self.classroom.entrances)
             self.grid.place_agent(student, initial_pos)
+            student.step()
 
-        self.schedule.step()
+        # self.schedule.step()
 
 
 
