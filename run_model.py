@@ -90,7 +90,8 @@ def init_default_model(coefs, class_size, seed=0):
     sociability_sequence = get_default_sociability_sequence(class_size)
 
     # create the model
-    model = ClassroomModel(classroom, coefs, sociability_sequence=sociability_sequence, degree_sequence=degree_sequence, seed=seed)
+    #model = ClassroomModel(classroom, coefs, sociability_sequence=sociability_sequence, degree_sequence=degree_sequence, seed=seed)
+    model = ClassroomModel(classroom, coefs, seed=seed)
 
     return model
 
@@ -136,7 +137,7 @@ def get_model_state(model):
 
 
     for pos in model.classroom.entrances:
-        image[pos[1],pos[0]] = -2
+        image[pos[1],pos[0]] = -3
 
     return image, info
 

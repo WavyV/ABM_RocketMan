@@ -68,9 +68,16 @@ class Student():
                     seat_choice = self.model.rand.choice(seat_options)
                 else:
                     if old_seat is None:
-                        # pick seat with highest utility (if multiple seats are optimal, choose one of them randomly)
                         seat_utilities = [seat.get_total_utility(self) for seat in seat_options]
-                        seat_choice = self.model.rand.choice(np.array(seat_options)[np.where(seat_utilities == np.max(seat_utilities))])
+                        sum_utilities = sum(seat_utilities)
+                        if sum_utilities > 0:
+                            # convert utilities into probabilities and choose seat based on the resulting probability distribution
+                            #seat_choice = self.model.rand.choice(np.array(seat_options)[np.where(seat_utilities == np.max(seat_utilities))])
+                            seat_utilities = [s/sum_utilities for s in seat_utilities]
+                            seat_choice = self.model.rand.choice(seat_options, p=seat_utilities)
+                        else:
+                            # if all utilities are zero, choose the seat randomly
+                            seat_choice = self.model.rand.choice(seat_options)
 
                     else:
                         """ only used if 'will_to_change_seat' is enabled """
@@ -147,7 +154,7 @@ class Seat():
 
         self.model = model
         self.student = None
-        self.accessibility = 0
+        self.accessibility = 1
         self.pos = pos
 
         x, y = pos
@@ -205,7 +212,7 @@ class Seat():
         else:
             count_right = np.infty
 
-        self.accessibility = -min(count_right, count_left)
+        self.accessibility = 1 - min(count_right, count_left)/float(self.model.classroom.max_pass)
 
 
     """
@@ -289,7 +296,7 @@ class Seat():
 
         # scale the final sociability term to range [0,1]
         s_min, s_max = self.model.sociability_range
-        u_sociability = (u_sociability - s_min) / (s_max - s_min)
+        u_sociability = max(0, u_sociability - s_min) / (s_max - s_min)
 
         return u_friendship, u_sociability
 
@@ -359,7 +366,7 @@ class ClassroomModel():
         if degree_sequence is None:
             # create a random network
             self.max_num_agents = self.classroom.seat_count
-            self.social_network = network.erdos_renyi(self.max_num_agents, 0.2)
+            self.social_network = network.erdos_renyi(self.max_num_agents, 0.2)[0]
         else:
             self.max_num_agents = len(degree_sequence)
             self.social_network = network.walts_graph(degree_sequence, plot=False)[0]
