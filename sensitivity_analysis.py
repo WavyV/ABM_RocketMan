@@ -14,7 +14,7 @@ SAMPLES = 100  # Total samples using Saltelli sampling: `SAMPLES` * 12
 COMPARISONS = OrderedDict({
     "clusters": model_comparison.count_clusters,
     "entropy": model_comparison.get_entropy,
-    # "lbp": model_comparison.count_lbp
+    "lbp": model_comparison.count_lbp
 })
 RESULTS_FILENAME = "sensitivity_results.pickle"
 _RUN_COUNTER = 0
@@ -27,9 +27,9 @@ def run(class_size, b1, b2, b3, b4):
     Each of these values is the sum of e.g. `get_entropy(final_state)`.
     """
     class_size = int(class_size)
+    global _RUN_COUNTER
     print("\nRun: {} \nN: {} b1: {} b2: {} b3: {} b4: {}".format(
         _RUN_COUNTER, class_size, b1, b2, b3, b4))
-    global _RUN_COUNTER
     _RUN_COUNTER += 1
     model = run_model.init_default_model([b1, b2, b3, b4], class_size)
     final_state = run_model.final_model_state(model, MODEL_ITERATIONS)
@@ -54,7 +54,7 @@ parameters = {
 }
 parameters["num_vars"] = len(parameters["names"])
 samples = saltelli.sample(parameters, SAMPLES)
-print("Samples shape: {0}".format(samples.shape))
+print("Parameters shape: {0}".format(samples.shape))
 
 # Calculate model results and sensitivity and print.
 results = np.array(list(map(lambda args: run(*args), samples)))
