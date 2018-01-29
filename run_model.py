@@ -122,7 +122,7 @@ def get_model_state(model):
                 info[y,x,0] = model.classroom.pos_utilities[x,y]
                 if agent.student is None:
                     # seat is available. Determine level of blocking
-                    image[y,x] = -2 + agent.get_accessibility()
+                    image[y,x] = -2 + agent.accessibility
                 else:
                     # seat is occupied. Set value based on the student's happiness
                     image[y,x] = 1
