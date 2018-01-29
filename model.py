@@ -269,7 +269,6 @@ class Seat():
         interaction_x, interaction_y = self.model.friendship_interaction_matrix.shape
 
         neighborhood = self.get_neighborhood(interaction_x, interaction_y)
-
         u_friendship = 0
         u_sociability = 0
 
@@ -277,10 +276,11 @@ class Seat():
             for y in range(interaction_y):
 
                 if neighborhood[x,y] >= 0: # if there is a student
-
                     # compute the friendship component
+
                     friendship = self.model.social_network[int(student.unique_id), int(neighborhood[x,y])]
-                    u_friendship += self.model.friendship_interaction_matrix[x,y] * friendship
+
+                    u_friendship += self.model.friendship_interaction_matrix[x, y] * friendship
 
                     # if neighbouring seat is occupied by a student that is not a friend,
                     # determine the sociability component based on the student's sociability attribute
@@ -366,7 +366,7 @@ class ClassroomModel():
 
         if sociability_sequence is None:
             # default sociability values are sampled uniformly from [0,1]
-            self.sociability_sequence = deque([self.rand.uniform(SOCIABILITY_MIN, SOCIABILITY_MAX) for _ in range(self.max_num_agents)])
+            self.sociability_sequence = deque([self.rand.uniform(0, 1) for _ in range(self.max_num_agents)])
             self.sociability_range = (min(self.sociability_sequence),max(self.sociability_sequence))
         else:
             if len(sociability_sequence) == self.max_num_agents:
@@ -442,8 +442,13 @@ class ClassroomModel():
     def get_binary_model_state(self):
 
         model_state = np.zeros((self.classroom.width, self.classroom.num_rows))
-        for student in self.students:
-            model_state[student.pos] = 1
+        for seat in self.seats.flat:
+            # model_state[student.pos] = 1
+            try:
+                if seat.student:
+                    model_state[seat.pos] = 1
+            except:
+                continue
 
         # remove aisles from the matrix
         model_state = np.delete(model_state, self.classroom.aisles_x, axis=0)
@@ -495,17 +500,18 @@ class ClassroomDesign():
 
         # define utility/attractivity of each seat location
         # if the utility matrix does not include aisles, insert zeros at the respective positions
-        if pos_utilities.shape == (self.width - len(self.aisles_x), num_rows - len(self.aisles_y)):
-            for x in self.aisles_x:
-                if x < pos_utilities.shape[0]:
-                    pos_utilities = np.insert(pos_utilities, x, 0, axis=0)
-                else:
-                    pos_utilities = np.concatenate((pos_utilities, np.zeros((1,pos_utilities.shape[1]))), axis=0)
-            for y in self.aisles_y:
-                if y < pos_utilities.shape[1]:
-                    pos_utilities = np.insert(pos_utilities, y, 0, axis=1)
-                else:
-                    pos_utilities = np.concatenate((pos_utilities, np.zeros((pos_utilities.shape[0],1))), axis=1)
+
+        # if pos_utilities.shape == (self.width - len(self.aisles_x), num_rows - len(self.aisles_y)):
+        #     for x in self.aisles_x:
+        #         if x < pos_utilities.shape[0]:
+        #             pos_utilities = np.insert(pos_utilities, x, 0, axis=0)
+        #         else:
+        #             pos_utilities = np.concatenate((pos_utilities, np.zeros((1,pos_utilities.shape[1]))), axis=0)
+        #     for y in self.aisles_y:
+        #         if y < pos_utilities.shape[1]:
+        #             pos_utilities = np.insert(pos_utilities, y, 0, axis=1)
+        #         else:
+        #             pos_utilities = np.concatenate((pos_utilities, np.zeros((pos_utilities.shape[0],1))), axis=1)
 
         if pos_utilities is not None and pos_utilities.shape == (self.width, num_rows) and np.max(pos_utilities) > 0:
             # scale the given attractivity weights to assure values in range [0,1]
