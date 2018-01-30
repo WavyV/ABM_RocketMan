@@ -2,6 +2,9 @@ import numpy as np
 import pickle as pkl
 import matplotlib.pyplot as plt
 from model import *
+from run_model import *
+from skimage.measure import shannon_entropy
+from skimage.feature import greycomatrix, greycoprops
 
 _compare_dict = {'lbp': 0, 'cluster': 1, 'entropy': 2}
 
@@ -177,7 +180,7 @@ def generate_profile(models, method='lbp'):
     # reduce all the models first
     reduced_models = []
     for m in models:
-        reduced_models.append(reduce_model_state(m))
+        reduced_models.append(m.get_binary_model_state())
 
     # setup profile depending on method type
     if method == 'lbp':
@@ -201,6 +204,45 @@ def generate_profile(models, method='lbp'):
             profile += f(rm)
 
     return profile / len(models)
+
+"""
+Compute characteristic measures of a model state
+
+Args:
+    model_state: seating distribution as a binary matrix of seats
+    method: {'homogeneity', 'correlation', 'rl_nonuniformity', 'rl_long_run_emphasis'} The method to use.
+            'homogeneity' and 'correlation' are features derived from the grey-level co-occurrence matrix (GLCM).
+            'rl_nonuniformity' and 'rl_long_run_emphasis' are features derived from the vector of run-lengths.
+
+Returns:
+    The float value of the respective feature
+
+"""
+def get_characteristic_value(model_state, method='homogeneity', aisles=[0]):
+
+    if method == 'homogeneity':
+        # grey-level co-occurrence matrix for horizontal seat pairs with distance = 1
+        glcm = greycomatrix(model_state, [1], [0], symmetric=False, normed=True, levels=2)
+        return greycoprops(glcm, 'homogeneity')[0,0]
+
+    elif method == 'correlation':
+        # grey-level co-occurrence matrix for horizontal seat pairs with distance = 1
+        glcm = greycomatrix(model_state, [1], [0], symmetric=False, normed=True, levels=2)
+        return greycoprops(glcm, 'correlation')[0,0]
+
+    elif method == 'rl_nonuniformity':
+        run_lengths = count_clusters(model_state, aisles)
+        num_runs = sum(run_lengths)
+        return sum([rl**2 for rl in run_lengths])/num_runs
+
+    elif method == 'rl_long_run_emphasis':
+        run_lengths = count_clusters(model_state, aisles)
+        num_runs = sum(run_lengths)
+        return sum([rl * (j**2) for j, rl in enumerate(run_lengths)])/num_runs
+
+    else:
+        raise ValueError("No valid method name.")
+
 
 
 """
@@ -246,3 +288,22 @@ def compare(model_state_1, model_state_2, method='lbp', aisles=[0]):
 
     else:
         return None
+
+
+if __name__ == "__main__":
+    class_size = 100
+    models = [init_default_model([0,0,0,0], class_size), init_default_model([1,0,0,1], class_size), init_default_model([0,0,1,0], class_size)]
+    for i in range(100):
+        for m in models:
+            m.step()
+    model_states = [m.get_binary_model_state() for m in models]
+    aisles = models[0].classroom.aisles_x
+
+    for m in model_states:
+        plt.figure()
+        plt.imshow(m)
+        title = ""
+        for method in ['homogeneity', 'correlation', 'rl_nonuniformity', 'rl_long_run_emphasis']:
+            title += " {} = {:.2f} ".format(method, get_characteristic_value(m, method, aisles))
+        plt.title(title)
+        plt.show()

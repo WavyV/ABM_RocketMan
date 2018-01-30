@@ -8,7 +8,7 @@ MODEL_DATA_PATH = "animation_data"
 FILE_NAME = "model_data.json"
 NUM_ITERATIONS = 150
 CLASS_SIZE = 150
-MODEL_COEFS = [[1,0,0,1], [1,0,2,1], [1,2,2,1]]
+MODEL_COEFS = [[1,0,0,1], [0,0,2,1], [0,50,2,1]]
 
 MODEL_INPUT_PATH = "model_input"
 DEFAULT_DEG_SEQ = "_degree_sequence.pkl"
