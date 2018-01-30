@@ -69,15 +69,27 @@ class Student():
                 else:
                     if old_seat is None:
                         seat_utilities = [seat.get_total_utility(self) for seat in seat_options]
-                        sum_utilities = sum(seat_utilities)
+
+                        # determine the best 50% of all available seats
+                        seat_subset, utility_subset = [], []
+                        for i in range(int(0.5 * len(seat_options))):
+                            index = np.argmax(seat_utilities)
+                            seat_subset.append(seat_options[index])
+                            utility_subset.append(seat_utilities[index])
+                            seat_utilities[index] = 0
+
+                        sum_utilities = sum(utility_subset)
                         if sum_utilities > 0:
                             # convert utilities into probabilities and choose seat based on the resulting probability distribution
                             #seat_choice = self.model.rand.choice(np.array(seat_options)[np.where(seat_utilities == np.max(seat_utilities))])
-                            seat_utilities = [s/sum_utilities for s in seat_utilities]
-                            seat_choice = self.model.rand.choice(seat_options, p=seat_utilities)
+                            utility_subset = [s/sum_utilities for s in utility_subset]
+                            seat_choice = self.model.rand.choice(seat_subset, p=utility_subset)
+                            print("chosen utility: " + str(seat_choice.get_total_utility(self)))
+                            print("max utility: " + str(max(utility_subset)*sum_utilities))
                         else:
                             # if all utilities are zero, choose the seat randomly
                             seat_choice = self.model.rand.choice(seat_options)
+                            print("random choice")
 
                     else:
                         """ only used if 'will_to_change_seat' is enabled """
@@ -448,7 +460,7 @@ class ClassroomModel():
     """
     def get_binary_model_state(self):
 
-        model_state = np.zeros((self.classroom.width, self.classroom.num_rows))
+        model_state = np.zeros((self.classroom.width, self.classroom.num_rows), dtype=int)
         for seat in self.seats.flat:
             # model_state[student.pos] = 1
             try:
