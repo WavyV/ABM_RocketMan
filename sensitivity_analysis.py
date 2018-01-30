@@ -10,7 +10,7 @@ import run_model
 import model_comparison
 
 MODEL_ITERATIONS = 300
-NUM_SAMPLES = 100  # Total samples using Saltelli sampling: `NUM_SAMPLES` * 12
+NUM_SAMPLES = 1000  # Total samples using Saltelli sampling: `NUM_SAMPLES` * 12
 COMPARISONS = OrderedDict({
     "clusters": model_comparison.count_clusters,
     "entropy": model_comparison.get_entropy,
@@ -18,13 +18,13 @@ COMPARISONS = OrderedDict({
 })
 RESULTS_FILENAME = "sensitivity_results.pickle"
 PARAMETERS = {
-    "names": ["N", "b1", "b2", "b3", "b4"],
+    "names": ["b1", "b2", "b3", "b4", "class_size"],
     "bounds": [
+        [0, 1],
+        [0, 1],
+        [0, 1],
+        [0, 1],
         [1, 240],
-        [0, 1],
-        [0, 1],
-        [0, 1],
-        [0, 1],
     ]
 }
 
@@ -119,12 +119,12 @@ def run_sensitivity_analysis(parameters=PARAMETERS, num_samples=NUM_SAMPLES,
 
 if __name__ == "__main__":
     # Run with default settings.
-    run_sensitivity_analysis()
+    # run_sensitivity_analysis()
 
     # Run with fixed class size.
     parameters = PARAMETERS
     del parameters["names"][0]
     del parameters["bounds"][0]
     run_sensitivity_analysis(
-        fixed_class_size=100, parameters=parameters
+        fixed_class_size=200, parameters=parameters
     )
