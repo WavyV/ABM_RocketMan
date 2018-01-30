@@ -12,9 +12,9 @@ import model_comparison
 
 # All of the model measure functions with an identifying key.
 COMPARISONS = OrderedDict({
-    "clusters": model_comparison.count_clusters,
-    # "entropy": model_comparison.get_entropy
-    # "lbp": model_comparison.count_lbp
+    "clusters": lambda x: sum(model_comparison.count_clusters(x)),
+    # "entropy": lambda x: sum(model_comparison.get_entropy(x)),
+    # "lbp": lambda x: sum(model_comparison.count_lbp(x)),
 })
 
 # Iterations to run each model for.
@@ -77,9 +77,7 @@ def run(b1, b2, b3, b4, class_size, model_iterations, comparison_methods):
     # Collect comparison measures and return them.
     comparison_values = []
     for comparison_method, comparison_f in comparison_methods.items():
-        results = comparison_f(final_state)
-        results_sum = sum(results)
-        comparison_values.append(results_sum)
+        comparison_values.append(comparison_f(final_state))
     return comparison_values
 
 
@@ -91,11 +89,11 @@ def run_sobol_analysis(parameters=PARAMETERS, num_samples=NUM_SAMPLES,
     """Run, print and save sensitivity analysis.
 
     Args:
-        parameters: dict of parameter ranges expected by salib.
-        num_samples: int, amount of samples that salib will take.
+        parameters: dict of parameter ranges as expected by salib.
+        num_samples: int, amount of samples, as per the argument to salib.
         model_iterations: int, amount of iterations to run each model.
         comparison_methods: dict of string to comparison function.
-        results_filename: str, where to save the sensitivity results.
+        results_filename: str, where to save the sobol results.
         fixed_class_size: int, fix class size to given number (note that in
             this case class size must not be in the given parameters)
     """
