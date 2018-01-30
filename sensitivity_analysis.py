@@ -3,20 +3,24 @@ import pickle
 
 from SALib.sample import saltelli
 from SALib.analyze import sobol
+import matplotlib.pyplot as plt
 import numpy as np
 from pprint import pprint
 
 import run_model
 import model_comparison
 
-MODEL_ITERATIONS = 300
-NUM_SAMPLES = 1000  # Total samples using Saltelli sampling: `NUM_SAMPLES` * 12
+# All of the model measure functions with an identifying key.
 COMPARISONS = OrderedDict({
     "clusters": model_comparison.count_clusters,
-    "entropy": model_comparison.get_entropy,
-    "lbp": model_comparison.count_lbp
+    # "entropy": model_comparison.get_entropy
+    # "lbp": model_comparison.count_lbp
 })
-RESULTS_FILENAME = "sensitivity_results.pickle"
+
+# Iterations to run each model for.
+MODEL_ITERATIONS = 300
+
+# Parameters in the weird format that SALib expects.
 PARAMETERS = {
     "names": ["b1", "b2", "b3", "b4", "class_size"],
     "bounds": [
@@ -25,8 +29,17 @@ PARAMETERS = {
         [0, 1],
         [0, 1],
         [1, 240],
-    ]
+    ],
+    "_defaults": [1, 1, 1, 1, 120]  # Not used by SALib, but by OFAT.
 }
+
+# Sobol parameters
+NUM_SAMPLES = 1000  # Total samples using Saltelli sampling: `NUM_SAMPLES` * 12
+RESULTS_FILENAME = "sobol_results.pickle"
+
+# OFAT parameters
+RUNS_PER_SAMPLE = 10
+SAMPLES_PER_PARAM = 10
 
 
 def get_samples(parameters, num_samples):
@@ -52,7 +65,6 @@ def run(b1, b2, b3, b4, class_size, model_iterations, comparison_methods):
     # Setup parameters for model.
     class_size = int(class_size)
     coefficients = [b1, b2, b3, b4]
-    print("coefs: {} class_size: {}".format(coefficients, class_size))
     global _RUN_COUNTER
     print("\nRun: {} \nN: {} coefficients: {}".format(
         _RUN_COUNTER, class_size, coefficients))
@@ -67,16 +79,15 @@ def run(b1, b2, b3, b4, class_size, model_iterations, comparison_methods):
     for comparison_method, comparison_f in comparison_methods.items():
         results = comparison_f(final_state)
         results_sum = sum(results)
-        print("{} comparison: {}".format(comparison_method, results_sum))
         comparison_values.append(results_sum)
     return comparison_values
 
 
-def run_sensitivity_analysis(parameters=PARAMETERS, num_samples=NUM_SAMPLES,
-                             model_iterations=MODEL_ITERATIONS,
-                             comparison_methods=COMPARISONS,
-                             results_filename=RESULTS_FILENAME,
-                             fixed_class_size=None):
+def run_sobol_analysis(parameters=PARAMETERS, num_samples=NUM_SAMPLES,
+                       model_iterations=MODEL_ITERATIONS,
+                       comparison_methods=COMPARISONS,
+                       results_filename=RESULTS_FILENAME,
+                       fixed_class_size=None):
     """Run, print and save sensitivity analysis.
 
     Args:
@@ -88,16 +99,16 @@ def run_sensitivity_analysis(parameters=PARAMETERS, num_samples=NUM_SAMPLES,
         fixed_class_size: int, fix class size to given number (note that in
             this case class size must not be in the given parameters)
     """
-    # Get samples and calculate results for each sample.
+    # Get samples and calculate output measures for each sample.
     samples = get_samples(parameters, num_samples)
     global _RUN_COUNTER
     _RUN_COUNTER = 0
     results = np.array(list(map(
         lambda run_params: run(
             *run_params,
-            # Class size may be passed in as a parameter sample via
-            # `run_params`. However we can also fix the class size by passing
-            # in `fixed_class_size` as a keyword argument.
+            # Class size may be passed in as a parameter via `run_params`.
+            # However we can also fix the class size by passing in
+            # `fixed_class_size` as a keyword argument.
             **({} if fixed_class_size is None
                else {"class_size": fixed_class_size}),
             model_iterations=model_iterations,
@@ -117,14 +128,99 @@ def run_sensitivity_analysis(parameters=PARAMETERS, num_samples=NUM_SAMPLES,
     print("Saved results to {0}".format(results_filename))
 
 
+def run_ofat_analysis(parameters=PARAMETERS,
+                      samples_per_param=SAMPLES_PER_PARAM,
+                      runs_per_sample=RUNS_PER_SAMPLE,
+                      model_iterations=MODEL_ITERATIONS,
+                      comparison_methods=COMPARISONS):
+    """Run OFAT for each of the parameters.
+
+    Return a (samples_per_param, num_params, num_measures) size matrix.
+
+    """
+    # Set up results matrix and print useful information.
+    results = np.empty(
+        (samples_per_param, len(parameters["names"]), len(comparison_methods)))
+    default_params = parameters["_defaults"]
+    for i, param_name in enumerate(parameters["names"]):
+        print("Default {} for parameter {}".format(
+            default_params[i], param_name))
+    print("\nTotal runs: {}".format(
+        len(parameters["names"]) * samples_per_param * runs_per_sample))
+
+    global _RUN_COUNTER
+    _RUN_COUNTER = 0
+    # First we iterate through each parameter, then the samples for that
+    # parameter, then the amount of runs for that sample (averaged).
+    for j, param_name in enumerate(parameters["names"]):
+        bounds = parameters["bounds"][j]
+        print("\nRunning OFAT on {}, bounds {}".format(param_name, bounds))
+        param_values = np.linspace(*bounds, samples_per_param)
+        for i, param_value in enumerate(param_values):
+            sample_params = default_params[:]
+            sample_params[j] = param_value
+            sample_measures = []
+            for _ in range(runs_per_sample):
+                measures = run(
+                    *sample_params,
+                    model_iterations=model_iterations,
+                    comparison_methods=comparison_methods)
+                sample_measures.append(measures)
+            # TODO: Why is this axis=0 and not axis=1 :s ? But it works so..
+            sample_measures = np.array(sample_measures).mean(axis=0)
+            print("sample measurements: {}".format(sample_measures))
+            # Get the mean of all sample values.
+            results[i][j] = sample_measures
+    return results
+
+
+def ofat_single_comparison_results(results, comparison_index):
+    """Return a new array like the given `run_ofat_analysis` results but each
+    element is reduced from a list to a single value for one comparison method.
+
+    """
+    single_comparison_results = np.empty(results.shape[:2])
+    for i in range(results.shape[0]):
+        for j in range(results.shape[1]):
+            single_comparison_results[i][j] = results[i][j][comparison_index]
+    return single_comparison_results
+
+
+def display_ofat_results(results, parameters=PARAMETERS,
+                         comparison_methods=COMPARISONS):
+    """Display OFAT results as returned from `run_ofat_analysis`.
+
+    Args:
+        results: the returned value from `run_ofat_analysis`.
+        ...: the other two are the same parameters as to `run_ofat_analysis`.
+
+    """
+    for k, comparison_method in enumerate(comparison_methods):
+        plot_data = ofat_single_comparison_results(results, k)
+        fig = plt.figure()
+        for j, param_name in enumerate(parameters["names"]):
+            bounds = parameters["bounds"][j]
+            xs = np.linspace(*bounds, results.shape[0])
+            ys = plot_data[:, j]
+            ax = fig.add_subplot(results.shape[1], 1, j + 1)
+            ax.set_title("{} method varying {}".format(
+                comparison_method, param_name))
+            ax.plot(xs, ys)
+        plt.show()
+
+
 if __name__ == "__main__":
     # Run with default settings.
-    # run_sensitivity_analysis()
+    # run_sobol_analysis()
 
     # Run with fixed class size.
-    parameters = PARAMETERS
-    del parameters["names"][0]
-    del parameters["bounds"][0]
-    run_sensitivity_analysis(
-        fixed_class_size=200, parameters=parameters
-    )
+    # parameters = PARAMETERS
+    # del parameters["names"][0]
+    # del parameters["bounds"][0]
+    # run_sobol_analysis(
+    #     fixed_class_size=200, parameters=parameters
+    # )
+
+    # OFAT!
+    results = run_ofat_analysis()
+    display_ofat_results(results)
