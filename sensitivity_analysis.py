@@ -54,7 +54,6 @@ def get_samples(parameters, num_samples):
     """Return num_samples taken from the given parameter ranges."""
     parameters["num_vars"] = len(parameters["names"])
     samples = saltelli.sample(parameters, num_samples)
-    print("Parameters shape: {0}".format(samples.shape))
     return samples
 
 
@@ -106,10 +105,13 @@ def run_sobol_analysis(parameters=PARAMETERS, num_samples=NUM_SAMPLES,
         fixed_class_size: int, fix class size to given number (note that in
             this case class size must not be in the given parameters)
     """
-    # Get samples and calculate output measures for each sample.
-    samples = get_samples(parameters, num_samples)
+    # Setup parameters and print total runs.
     global _RUN_COUNTER
     _RUN_COUNTER = 0
+    samples = get_samples(parameters, num_samples)
+    print("\nTotal runs: {}".format(samples.shape[0]))
+
+    # Calculate output measures for each sample.
     results = np.array(list(map(
         lambda run_params: run(
             *run_params,
@@ -218,7 +220,7 @@ def display_ofat_results(results, parameters=PARAMETERS,
 
 if __name__ == "__main__":
     # Run with default settings.
-    # run_sobol_analysis()
+    run_sobol_analysis()
 
     # Run with fixed class size.
     # parameters = PARAMETERS
