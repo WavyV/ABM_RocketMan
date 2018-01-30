@@ -222,8 +222,9 @@ if __name__ == "__main__":
 
     # Run with fixed class size.
     # parameters = PARAMETERS
-    # del parameters["names"][0]
-    # del parameters["bounds"][0]
+    # del parameters["names"][4]
+    # del parameters["bounds"][4]
+    # del parameters["_defaults"][4]
     # run_sobol_analysis(
     #     fixed_class_size=200, parameters=parameters
     # )
