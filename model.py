@@ -440,23 +440,27 @@ class ClassroomModel():
         model_state: binary matrix where each entry refers to a seat's state
     """
     def get_binary_model_state(self):
-
         model_state = np.zeros((self.classroom.width, self.classroom.num_rows))
         for seat in self.seats.flat:
             # model_state[student.pos] = 1
-            try:
-                if seat.student:
-                    model_state[seat.pos] = 1
-            except:
-                continue
+            if seat is not None and seat.student:
+                model_state[seat.pos] = 1
+        return self.remove_aisles(model_state).T
 
+    def get_happiness_model_state(self):
+        """Return a matrix of the happiness of each student at each seat."""
+        model_state = np.zeros((self.classroom.width, self.classroom.num_rows))
+        for seat in self.seats.flat:
+            if seat is not None and seat.student:
+                model_state[seat.pos] = seat.get_happiness(seat.student)
+        return self.remove_aisles(model_state).T
+
+    def remove_aisles(self, model_state):
+        """Remove aisles from the given matrix with shape of this model."""
         # remove aisles from the matrix
         model_state = np.delete(model_state, self.classroom.aisles_x, axis=0)
         model_state = np.delete(model_state, self.classroom.aisles_y, axis=1)
-
-        return model_state.T
-
-
+        return model_state
 
 
 class ClassroomDesign():

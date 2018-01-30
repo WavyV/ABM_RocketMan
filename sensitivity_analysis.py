@@ -10,11 +10,16 @@ from pprint import pprint
 import run_model
 import model_comparison
 
-# All of the model measure functions with an identifying key.
+# All of the output measure functions with an identifying key.
+# Each function takes a model (in end state) as first and only argument.
 COMPARISONS = OrderedDict({
-    "clusters": lambda x: sum(model_comparison.count_clusters(x)),
-    # "entropy": lambda x: sum(model_comparison.get_entropy(x)),
-    # "lbp": lambda x: sum(model_comparison.count_lbp(x)),
+    # "clusters": lambda m: sum(
+    #     model_comparison.count_clusters(m.get_binary_model_state())),
+    "happiness": lambda m: sum(sum(m.get_happiness_model_state())),
+    # "entropy": lambda m: sum(
+    #     model_comparison.get_entropy(m.get_binary_model_state())),
+    # "lbp": lambda m: sum(
+    #     model_comparison.get_entropy(m.get_binary_model_state())),
 })
 
 # Iterations to run each model for.
@@ -39,7 +44,10 @@ RESULTS_FILENAME = "sobol_results.pickle"
 
 # OFAT parameters
 RUNS_PER_SAMPLE = 10
-SAMPLES_PER_PARAM = 10
+SAMPLES_PER_PARAM = 20
+
+# TODO: BAD CODE AND SHOULD BE REMOVED.
+_RUN_COUNTER = 0
 
 
 def get_samples(parameters, num_samples):
@@ -62,22 +70,23 @@ def run(b1, b2, b3, b4, class_size, model_iterations, comparison_methods):
         model_iterations: int, amount of iterations to run each model.
         comparison_methods: dict of string to comparison function.
     """
-    # Setup parameters for model.
+    # Setup parameters and update counter.
     class_size = int(class_size)
     coefficients = [b1, b2, b3, b4]
     global _RUN_COUNTER
-    print("\nRun: {} \nN: {} coefficients: {}".format(
-        _RUN_COUNTER, class_size, coefficients))
     _RUN_COUNTER += 1
 
     # Setup initial model and run it
     model = run_model.init_default_model(coefficients, class_size)
-    final_state = run_model.final_model_state(model, model_iterations)
+    final_model = run_model.final_model(model, model_iterations)
 
     # Collect comparison measures and return them.
     comparison_values = []
+    print("\nRun: {} \nN: {} coefficients: {}".format(
+        _RUN_COUNTER, class_size, coefficients))
     for comparison_method, comparison_f in comparison_methods.items():
-        comparison_values.append(comparison_f(final_state))
+        comparison_values.append(comparison_f(final_model))
+        print("{} for {}".format(comparison_values[-1], comparison_method))
     return comparison_values
 
 
