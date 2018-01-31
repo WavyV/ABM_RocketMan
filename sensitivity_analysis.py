@@ -44,10 +44,17 @@ RESULTS_FILENAME = "sobol_results.pickle"
 
 # OFAT parameters
 RUNS_PER_SAMPLE = 10
-SAMPLES_PER_PARAM = 20
+SAMPLES_PER_PARAM = 30
 
 # TODO: BAD CODE AND SHOULD BE REMOVED.
 _RUN_COUNTER = 0
+
+
+def valid_num(x):
+    """Return 0 if not valid number, else given x."""
+    if np.isinf(x):
+        return 0
+    return x
 
 
 def get_samples(parameters, num_samples):
@@ -86,7 +93,7 @@ def run(b1, b2, b3, b4, class_size, model_iterations, comparison_methods):
     for comparison_method, comparison_f in comparison_methods.items():
         comparison_values.append(comparison_f(final_model))
         print("{} for {}".format(comparison_values[-1], comparison_method))
-    return comparison_values
+    return list(map(valid_num, comparison_values))
 
 
 def run_sobol_analysis(parameters=PARAMETERS, num_samples=NUM_SAMPLES,
@@ -133,7 +140,10 @@ def run_sobol_analysis(parameters=PARAMETERS, num_samples=NUM_SAMPLES,
 
     # Finally save results to given filename.
     with open(results_filename, "wb") as f:
-        f.write(pickle.dumps(sensitivity))
+        f.write(pickle.dumps({
+            "sensitivity": sensitivity,
+            "data": results
+        }))
     print("Saved results to {0}".format(results_filename))
 
 
@@ -206,15 +216,20 @@ def display_ofat_results(results, parameters=PARAMETERS,
     """
     for k, comparison_method in enumerate(comparison_methods):
         plot_data = ofat_single_comparison_results(results, k)
-        fig = plt.figure()
+        # We plot all the betas on one graph and class size separately.
+        f, (axis1, axis2) = plt.subplots(2)
         for j, param_name in enumerate(parameters["names"]):
+            if param_name == "class_size":
+                axis = axis2
+            else:
+                axis = axis1
             bounds = parameters["bounds"][j]
-            xs = np.linspace(*bounds, results.shape[0])
-            ys = plot_data[:, j]
-            ax = fig.add_subplot(results.shape[1], 1, j + 1)
-            ax.set_title("{} method varying {}".format(
-                comparison_method, param_name))
-            ax.plot(xs, ys)
+            axis.scatter(np.linspace(*bounds, results.shape[0]),
+                         plot_data[:, j],
+                         label=param_name)
+            axis.set_title(comparison_method)
+            axis.set_ylim([0, 30])
+            axis.legend()
         plt.show()
 
 
@@ -232,5 +247,5 @@ if __name__ == "__main__":
     # )
 
     # OFAT!
-    results = run_ofat_analysis()
-    display_ofat_results(results)
+    # results = run_ofat_analysis()
+    # display_ofat_results(results)
