@@ -1,4 +1,5 @@
-from collections import OrderedDict
+import collections
+import concurrent
 import pickle
 
 from SALib.sample import saltelli
@@ -12,7 +13,7 @@ import model_comparison
 
 # All of the output measure functions with an identifying key.
 # Each function takes a model (in end state) as first and only argument.
-COMPARISONS = OrderedDict({
+COMPARISONS = collections.OrderedDict({
     # "clusters": lambda m: sum(
     #     model_comparison.count_clusters(m.get_binary_model_state())),
     "happiness": lambda m: sum(sum(m.get_happiness_model_state())),
@@ -46,12 +47,9 @@ RESULTS_FILENAME = "sobol_results.pickle"
 RUNS_PER_SAMPLE = 10
 SAMPLES_PER_PARAM = 30
 
-# TODO: BAD CODE AND SHOULD BE REMOVED.
-_RUN_COUNTER = 0
-
 
 def valid_num(x):
-    """Return 0 if not valid number, else given x."""
+    """Return 0 if invalid result, else given x."""
     if np.isinf(x):
         return 0
     return x
@@ -64,7 +62,8 @@ def get_samples(parameters, num_samples):
     return samples
 
 
-def run(b1, b2, b3, b4, class_size, model_iterations, comparison_methods):
+def run(b1, b2, b3, b4, class_size, model_iterations, comparison_methods,
+        fixed_class_size=None):
     """
     Run the model with given class size and beta coefficients.
     Return a list containing a result for each comparison measure.
@@ -73,26 +72,24 @@ def run(b1, b2, b3, b4, class_size, model_iterations, comparison_methods):
     Args:
         b1-b4: float, the coefficients for each beta term.
         class_size: float, class size that will be cast to an int.
+        fixed_class_size: float, convenience for overriding class_size.
         model_iterations: int, amount of iterations to run each model.
         comparison_methods: dict of string to comparison function.
     """
-    # Setup parameters and update counter.
+    # Setup parameters.
+    if fixed_class_size is not None:
+        class_size = fixed_class_size
     class_size = int(class_size)
     coefficients = [b1, b2, b3, b4]
-    global _RUN_COUNTER
-    _RUN_COUNTER += 1
 
-    # Setup initial model and run it
+    # Setup initial model and run it.
     model = run_model.init_default_model(coefficients, class_size)
     final_model = run_model.final_model(model, model_iterations)
 
     # Collect comparison measures and return them.
     comparison_values = []
-    print("\nRun: {} \nN: {} coefficients: {}".format(
-        _RUN_COUNTER, class_size, coefficients))
     for comparison_method, comparison_f in comparison_methods.items():
         comparison_values.append(comparison_f(final_model))
-        print("{} for {}".format(comparison_values[-1], comparison_method))
     return list(map(valid_num, comparison_values))
 
 
@@ -112,24 +109,26 @@ def run_sobol_analysis(parameters=PARAMETERS, num_samples=NUM_SAMPLES,
         fixed_class_size: int, fix class size to given number (note that in
             this case class size must not be in the given parameters)
     """
-    # Setup parameters and print total runs.
-    global _RUN_COUNTER
-    _RUN_COUNTER = 0
     samples = get_samples(parameters, num_samples)
     print("\nTotal runs: {}".format(samples.shape[0]))
 
-    # Calculate output measures for each sample.
-    results = np.array(list(map(
-        lambda run_params: run(
-            *run_params,
-            # Class size may be passed in as a parameter via `run_params`.
-            # However we can also fix the class size by passing in
-            # `fixed_class_size` as a keyword argument.
-            **({} if fixed_class_size is None
-               else {"class_size": fixed_class_size}),
-            model_iterations=model_iterations,
-            comparison_methods=comparison_methods),
-        samples)))
+    def sample_measures(sample):
+        """Return output measures for one sample."""
+        return run(*sample,
+                   fixed_class_size=fixed_class_size,
+                   model_iterations=model_iterations,
+                   comparison_methods=comparison_methods)
+
+    # Calculate measures for each sample and append to this results array.
+    results = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        run_count = 0
+        for measures, sample_params in (
+                zip(executor.map(sample_measures, samples), samples)):
+            print("\nRun: {}\nparameters: {}\nmeasures: {}\nfixed class size: {}".format(
+                  run_count, sample_params, measures, fixed_class_size))
+            run_count += 1
+            results.append(measures)
 
     # Calculate and print sensitivity analysis results.
     for i, comparison_method in enumerate(comparison_methods):
@@ -157,7 +156,7 @@ def run_ofat_analysis(parameters=PARAMETERS,
     Return a (samples_per_param, num_params, num_measures) size matrix.
 
     """
-    # Set up results matrix and print useful information.
+    # Set up results matrix and print some tasty info.
     results = np.empty(
         (samples_per_param, len(parameters["names"]), len(comparison_methods)))
     default_params = parameters["_defaults"]
@@ -167,10 +166,9 @@ def run_ofat_analysis(parameters=PARAMETERS,
     print("\nTotal runs: {}".format(
         len(parameters["names"]) * samples_per_param * runs_per_sample))
 
-    global _RUN_COUNTER
-    _RUN_COUNTER = 0
     # First we iterate through each parameter, then the samples for that
     # parameter, then the amount of runs for that sample (averaged).
+    run_count = 0
     for j, param_name in enumerate(parameters["names"]):
         bounds = parameters["bounds"][j]
         print("\nRunning OFAT on {}, bounds {}".format(param_name, bounds))
@@ -185,9 +183,12 @@ def run_ofat_analysis(parameters=PARAMETERS,
                     model_iterations=model_iterations,
                     comparison_methods=comparison_methods)
                 sample_measures.append(measures)
+                run_count += 1
+                print("\nRun: {}\nparameters: {}\nmeasures: {}".format(
+                    run_count, sample_params, measures))
             # TODO: Why is this axis=0 and not axis=1 :s ? But it works so..
             sample_measures = np.array(sample_measures).mean(axis=0)
-            print("sample measurements: {}".format(sample_measures))
+            print("avg measure: {}".format(sample_measures))
             # Get the mean of all sample values.
             results[i][j] = sample_measures
     return results
@@ -235,16 +236,10 @@ def display_ofat_results(results, parameters=PARAMETERS,
 
 if __name__ == "__main__":
     # Run with default settings.
-    run_sobol_analysis()
+    # run_sobol_analysis()
 
     # Run with fixed class size.
-    # parameters = PARAMETERS
-    # del parameters["names"][4]
-    # del parameters["bounds"][4]
-    # del parameters["_defaults"][4]
-    # run_sobol_analysis(
-    #     fixed_class_size=200, parameters=parameters
-    # )
+    run_sobol_analysis(fixed_class_size=200)
 
     # OFAT!
     # results = run_ofat_analysis()
