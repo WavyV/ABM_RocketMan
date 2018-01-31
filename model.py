@@ -17,6 +17,15 @@ General usage:
 """
 
 
+"""
+Also known as the taxicab distance...
+"""
+def moore_distance(a, b):
+    xa, ya = a
+    xb, yb = b
+
+    return abs(xa - xb) + abs(ya - yb)
+
 
 class Student():
 
@@ -42,6 +51,20 @@ class Student():
         self.moving_threshold = 1
         self.moving_prob = 0.2
 
+        # find a prefered seat, based on the positional utilities
+        sum_utilities = np.sum(model.classroom.pos_utilities)
+
+        if sum_utilities > 0:
+            probabilities = model.classroom.pos_utilities / sum_utilities
+
+            ps = None
+            while ps == None:
+                ps = np.random.choice(model.seats.flat, p=probabilities.flat)
+
+            self.prefered_seat = ps.pos
+
+        else:
+            self.prefered_seat = None
 
 
     """
@@ -69,7 +92,16 @@ class Student():
                 else:
                     if old_seat is None:
                         # pick seat with highest utility (if multiple seats are optimal, choose one of them randomly)
-                        seat_utilities = [seat.get_total_utility(self) for seat in seat_options]
+                        seat_utilities = []
+
+                        # coef_p * pos_utility
+                        # assume (for now) seats within a block of 5 around prefered seat have utility 1, else 0
+                        coef_p = self.model.coefs[0]
+                        for seat in seat_options:
+                            utility = seat.get_total_utility(self)
+                            pos_util = 1 if moore_distance(seat.pos, self.prefered_seat) <= 3 else 0
+                            seat_utilities.append(utility + coef_p * pos_util)
+
                         seat_choice = self.model.rand.choice(np.array(seat_options)[np.where(seat_utilities == np.max(seat_utilities))])
 
                     else:
@@ -303,7 +335,7 @@ class Seat():
 
         friendship_component, sociability_component = self.get_social_utility(student)
         coef_p, coef_f, coef_s, coef_a = self.model.coefs
-        total_utility = coef_p * self.get_position_utility() + coef_f * friendship_component + coef_s * sociability_component + coef_a * self.accessibility
+        total_utility = coef_f * friendship_component + coef_s * sociability_component + coef_a * self.accessibility
 
         return total_utility
 
@@ -318,7 +350,7 @@ class Seat():
 
         friendship_component, sociability_component = self.get_social_utility(student)
         coef_p, coef_f, coef_s, coef_a = self.model.coefs
-        total_utility = coef_p * self.get_position_utility() + coef_f * friendship_component + coef_s * sociability_component
+        total_utility = coef_f * friendship_component + coef_s * sociability_component
 
         return total_utility
 
@@ -501,17 +533,17 @@ class ClassroomDesign():
         # define utility/attractivity of each seat location
         # if the utility matrix does not include aisles, insert zeros at the respective positions
 
-        # if pos_utilities.shape == (self.width - len(self.aisles_x), num_rows - len(self.aisles_y)):
-        #     for x in self.aisles_x:
-        #         if x < pos_utilities.shape[0]:
-        #             pos_utilities = np.insert(pos_utilities, x, 0, axis=0)
-        #         else:
-        #             pos_utilities = np.concatenate((pos_utilities, np.zeros((1,pos_utilities.shape[1]))), axis=0)
-        #     for y in self.aisles_y:
-        #         if y < pos_utilities.shape[1]:
-        #             pos_utilities = np.insert(pos_utilities, y, 0, axis=1)
-        #         else:
-        #             pos_utilities = np.concatenate((pos_utilities, np.zeros((pos_utilities.shape[0],1))), axis=1)
+        if pos_utilities.shape == (self.width - len(self.aisles_x), num_rows - len(self.aisles_y)):
+            for x in self.aisles_x:
+                if x < pos_utilities.shape[0]:
+                    pos_utilities = np.insert(pos_utilities, x, 0, axis=0)
+                else:
+                    pos_utilities = np.concatenate((pos_utilities, np.zeros((1,pos_utilities.shape[1]))), axis=0)
+            for y in self.aisles_y:
+                if y < pos_utilities.shape[1]:
+                    pos_utilities = np.insert(pos_utilities, y, 0, axis=1)
+                else:
+                    pos_utilities = np.concatenate((pos_utilities, np.zeros((pos_utilities.shape[0],1))), axis=1)
 
         if pos_utilities is not None and pos_utilities.shape == (self.width, num_rows) and np.max(pos_utilities) > 0:
             # scale the given attractivity weights to assure values in range [0,1]
