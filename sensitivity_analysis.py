@@ -1,6 +1,7 @@
 import collections
 import concurrent
 import pickle
+import sys
 
 from SALib.sample import saltelli
 from SALib.analyze import sobol
@@ -11,22 +12,48 @@ from pprint import pprint
 import run_model
 import model_comparison
 
-# All of the output measure functions with an identifying key.
+
+"""
+This module is for sensitivity analysis using OFAT and Sobol methods.
+
+The OFAT and Sobol parameters are global variables, documented below. Other
+parameters, used by both methods are also found as global variables, again
+documented.
+
+For OFAT analysis generate the data and analyze it separately:
+    python3 sensitivity_analysis.py --ofat-run
+    python3 sensitivity_analysis.py --ofat-analysis
+
+For Sobol analysis generate the data and analyze it separately:
+    python3 sensitivity_analysis.py --sobol-run
+    python3 sensitivity_analysis.py --sobol-analysis
+"""
+
+
+# OFAT parameters
+RUNS_PER_SAMPLE = 10  # Amount of replicates per run.
+SAMPLES_PER_PARAM = 10  # Points on the interval per parameter.
+OFAT_RESULTS_FILENAME = "_ofat_results.pickle"
+
+# Sobol parameters
+NUM_SAMPLES = 1000  # Total samples using Saltelli sampling: `NUM_SAMPLES` * 12
+RESULTS_FILENAME = "sobol_results.pickle"
+
+# The output measures used to analyze the final state of a model.
 # Each function takes a model (in end state) as first and only argument.
 COMPARISONS = collections.OrderedDict({
+    "happiness": lambda m: sum(sum(m.get_happiness_model_state())),
     # "clusters": lambda m: sum(
     #     model_comparison.count_clusters(m.get_binary_model_state())),
-    "happiness": lambda m: sum(sum(m.get_happiness_model_state())),
     # "entropy": lambda m: sum(
-    #     model_comparison.get_entropy(m.get_binary_model_state())),
-    # "lbp": lambda m: sum(
-    #     model_comparison.get_entropy(m.get_binary_model_state())),
+    #     model_comparison.get_entropy(m.get_binary_model_state()))
 })
 
 # Iterations to run each model for.
 MODEL_ITERATIONS = 300
 
-# Parameters in the weird format that SALib expects.
+# Parameters in the funky format that SALib expects.
+# These parameters are used by both OFAT and Sobol.
 PARAMETERS = {
     "names": ["b1", "b2", "b3", "b4", "class_size"],
     "bounds": [
@@ -36,45 +63,22 @@ PARAMETERS = {
         [0, 1],
         [1, 240],
     ],
-    "_defaults": [1, 1, 1, 1, 120]  # Not used by SALib, but by OFAT.
+    "_defaults": [1, 1, 1, 1, 120]  # Not used by Sobol, but by OFAT.
 }
-
-# Sobol parameters
-NUM_SAMPLES = 1000  # Total samples using Saltelli sampling: `NUM_SAMPLES` * 12
-RESULTS_FILENAME = "sobol_results.pickle"
-
-# OFAT parameters
-RUNS_PER_SAMPLE = 10
-SAMPLES_PER_PARAM = 30
-
-
-def valid_num(x):
-    """Return 0 if invalid result, else given x."""
-    if np.isinf(x):
-        return 0
-    return x
-
-
-def get_samples(parameters, num_samples):
-    """Return num_samples taken from the given parameter ranges."""
-    parameters["num_vars"] = len(parameters["names"])
-    samples = saltelli.sample(parameters, num_samples)
-    return samples
 
 
 def run(b1, b2, b3, b4, class_size, model_iterations, comparison_methods,
         fixed_class_size=None):
     """
     Run the model with given class size and beta coefficients.
-    Return a list containing a result for each comparison measure.
-    Each of these results is the sum of e.g. `get_entropy(final_state)`.
+    Return a list containing a result for each given comparison method.
 
     Args:
         b1-b4: float, the coefficients for each beta term.
         class_size: float, class size that will be cast to an int.
-        fixed_class_size: float, convenience for overriding class_size.
+        fixed_class_size: float, convenience way to override class_size.
         model_iterations: int, amount of iterations to run each model.
-        comparison_methods: dict of string to comparison function.
+        comparison_methods: dict, of string to comparison function.
     """
     # Setup parameters.
     if fixed_class_size is not None:
@@ -90,7 +94,7 @@ def run(b1, b2, b3, b4, class_size, model_iterations, comparison_methods,
     comparison_values = []
     for comparison_method, comparison_f in comparison_methods.items():
         comparison_values.append(comparison_f(final_model))
-    return list(map(valid_num, comparison_values))
+    return list(map(lambda x: 0 if np.isinf(x) else x, comparison_values))
 
 
 def run_sobol_analysis(parameters=PARAMETERS, num_samples=NUM_SAMPLES,
@@ -101,7 +105,7 @@ def run_sobol_analysis(parameters=PARAMETERS, num_samples=NUM_SAMPLES,
     """Run, print and save sensitivity analysis.
 
     Args:
-        parameters: dict of parameter ranges as expected by salib.
+        parameters: dict, of parameter ranges, see PARAMETERS.
         num_samples: int, amount of samples, as per the argument to salib.
         model_iterations: int, amount of iterations to run each model.
         comparison_methods: dict of string to comparison function.
@@ -109,11 +113,12 @@ def run_sobol_analysis(parameters=PARAMETERS, num_samples=NUM_SAMPLES,
         fixed_class_size: int, fix class size to given number (note that in
             this case class size must not be in the given parameters)
     """
-    samples = get_samples(parameters, num_samples)
+    parameters["num_vars"] = len(parameters["names"])
+    samples = saltelli.sample(parameters, num_samples)
     print("\nTotal runs: {}".format(samples.shape[0]))
 
     def sample_measures(sample):
-        """Return output measures for one sample."""
+        """Return output measures for the given sample."""
         return run(*sample,
                    fixed_class_size=fixed_class_size,
                    model_iterations=model_iterations,
@@ -151,32 +156,55 @@ def run_ofat_analysis(parameters=PARAMETERS,
                       runs_per_sample=RUNS_PER_SAMPLE,
                       model_iterations=MODEL_ITERATIONS,
                       comparison_methods=COMPARISONS):
-    """Run OFAT for each of the parameters.
+    """Run OFAT for each of the given parameters ranges.
 
-    Return a (samples_per_param, num_params, num_measures) size matrix.
+    Return a (samples_per_param, num_params, num_comparisons) size matrix. Thus
+    each row corresponds to a sample, and each column for a parameter. So if we
+    consider the returned value as a 2d matrix, then each element E is an array
+    of length equal to the amount of comparison methods. Each element of E is a
+    length 3 array containing the min, max and mean values for that sample.
+
+    Example E (min, max and mean for each comparison method):
+
+        [[0.4, 2, 1.8], [1, 3.3, 1.4]]
+
+    Args:
+        parameters: dict, of parameter ranges, see PARAMETERS.
+        samples_per_param: int, points on the interval for each parameter.
+        runs_per_sample: int, the amount of replicates for each sample.
+        model_iterations: int, amount of iterations to run each model.
+        comparison_methods: dict of string to comparison function.
 
     """
-    # Set up results matrix and print some tasty info.
+    # Set up before the run, including results matrix.
     results = np.empty(
-        (samples_per_param, len(parameters["names"]), len(comparison_methods)))
+        (samples_per_param,
+         len(parameters["names"]),
+         len(comparison_methods),
+         3))
     default_params = parameters["_defaults"]
+    run_count = 0
+
+    # Just printing some useful information before running.
     for i, param_name in enumerate(parameters["names"]):
         print("Default {} for parameter {}".format(
             default_params[i], param_name))
     print("\nTotal runs: {}".format(
         len(parameters["names"]) * samples_per_param * runs_per_sample))
 
-    # First we iterate through each parameter, then the samples for that
-    # parameter, then the amount of runs for that sample (averaged).
-    run_count = 0
+    # Iterate through each parameter e.g. class_size.
     for j, param_name in enumerate(parameters["names"]):
         bounds = parameters["bounds"][j]
         print("\nRunning OFAT on {}, bounds {}".format(param_name, bounds))
         param_values = np.linspace(*bounds, samples_per_param)
+
+        # Iterate through all the values for this parameter.
         for i, param_value in enumerate(param_values):
-            sample_params = default_params[:]
-            sample_params[j] = param_value
-            sample_measures = []
+            sample_params = default_params[:]  # Copy of default parameters.
+            sample_params[j] = param_value  # Set value for current parameter.
+            sample_measures = []  # Collect results from each replicate here.
+
+            # One run for each replicate.
             for _ in range(runs_per_sample):
                 measures = run(
                     *sample_params,
@@ -186,29 +214,45 @@ def run_ofat_analysis(parameters=PARAMETERS,
                 run_count += 1
                 print("\nRun: {}\nparameters: {}\nmeasures: {}".format(
                     run_count, sample_params, measures))
+
+            # Set the element E (see function docstring) in results matrix.
+            E = np.empty((len(comparison_methods), 3))
             # TODO: Why is this axis=0 and not axis=1 :s ? But it works so..
-            sample_measures = np.array(sample_measures).mean(axis=0)
-            print("avg measure: {}".format(sample_measures))
-            # Get the mean of all sample values.
-            results[i][j] = sample_measures
+            mean = np.array(sample_measures).mean(axis=0)
+            min_ = np.array(sample_measures).min(axis=0)
+            max_ = np.array(sample_measures).max(axis=0)
+            print("min: {}".format(min_))
+            print("mean: {}".format(mean))
+            print("max: {}".format(max_))
+            for k in range(len(comparison_methods)):
+                E[k] = [min_[k], max_[k], mean[k]]
+            results[i][j] = E
     return results
 
 
-def ofat_single_comparison_results(results, comparison_index):
-    """Return a new array like the given `run_ofat_analysis` results but each
-    element is reduced from a list to a single value for one comparison method.
+def ofat_single_comparison_results(results, comparison_index, value_index):
+    """This function takes the value returned by `run_ofat_analysis`, please
+    understand that value first. Then in a new matrix, for each element E, it
+    reduces E to a single value given by `comparison_index` and `value_index`.
+
+    Example given `comparison_index=0` and `value_index=1`:
+
+        E: [[0.4, 2, 1.8], [1, 3.3, 1.4]]
+
+        Reduced value: 2
 
     """
     single_comparison_results = np.empty(results.shape[:2])
     for i in range(results.shape[0]):
         for j in range(results.shape[1]):
-            single_comparison_results[i][j] = results[i][j][comparison_index]
+            single_comparison_results[i][j] = (
+                results[i][j][comparison_index][value_index])
     return single_comparison_results
 
 
 def display_ofat_results(results, parameters=PARAMETERS,
                          comparison_methods=COMPARISONS):
-    """Display OFAT results as returned from `run_ofat_analysis`.
+    """Display OFAT results that were returned from `run_ofat_analysis`.
 
     Args:
         results: the returned value from `run_ofat_analysis`.
@@ -216,31 +260,45 @@ def display_ofat_results(results, parameters=PARAMETERS,
 
     """
     for k, comparison_method in enumerate(comparison_methods):
-        plot_data = ofat_single_comparison_results(results, k)
-        # We plot all the betas on one graph and class size separately.
-        f, (axis1, axis2) = plt.subplots(2)
+
+        min_plot_data = ofat_single_comparison_results(results, k, 0)
+        max_plot_data = ofat_single_comparison_results(results, k, 1)
+        mean_plot_data = ofat_single_comparison_results(results, k, 2)
+
         for j, param_name in enumerate(parameters["names"]):
-            if param_name == "class_size":
-                axis = axis2
-            else:
-                axis = axis1
             bounds = parameters["bounds"][j]
-            axis.scatter(np.linspace(*bounds, results.shape[0]),
-                         plot_data[:, j],
-                         label=param_name)
-            axis.set_title(comparison_method)
-            axis.set_ylim([0, 30])
-            axis.legend()
-        plt.show()
+
+            for label, plot_data in zip(
+                    ["min", "max", "mean"],
+                    [min_plot_data, max_plot_data, mean_plot_data]):
+                plt.scatter(np.linspace(*bounds, results.shape[0]),
+                            plot_data[:, j],
+                            label=label)
+                plt.title("{} measure for parameter {}".format(
+                    comparison_method, param_name))
+
+            plt.legend()
+            plt.show()
 
 
 if __name__ == "__main__":
+    if "--ofat-run" in sys.argv:
+        print("Starting OFAT run...\n")
+        results = run_ofat_analysis()
+        with open(OFAT_RESULTS_FILENAME, "wb") as f:
+            pickle.dump(results, f)
+
+    elif "--ofat-analysis" in sys.argv:
+        print("Starting OFAT analysis...\n")
+        with open(OFAT_RESULTS_FILENAME, "rb") as f:
+            results = pickle.load(f)
+        display_ofat_results(results)
+
     # Run with default settings.
     # run_sobol_analysis()
 
     # Run with fixed class size.
-    run_sobol_analysis(fixed_class_size=200)
+    # run_sobol_analysis(fixed_class_size=200)
 
     # OFAT!
     # results = run_ofat_analysis()
-    # display_ofat_results(results)
