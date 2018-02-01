@@ -70,26 +70,32 @@ class Student():
                     if old_seat is None:
                         seat_utilities = [seat.get_total_utility(self) for seat in seat_options]
 
-                        # determine the best 50% of all available seats
-                        seat_subset, utility_subset = [], []
-                        for i in range(int(0.5 * len(seat_options))):
-                            index = np.argmax(seat_utilities)
-                            seat_subset.append(seat_options[index])
-                            utility_subset.append(seat_utilities[index])
-                            seat_utilities[index] = 0
+                        if self.model.deterministic_choice:
+                            # always choose among the seats with highest utility
+                            seat_choice = self.model.rand.choice(np.array(seat_options)[np.where(seat_utilities == np.max(seat_utilities))])
 
-                        sum_utilities = sum(utility_subset)
-                        if sum_utilities > 0:
-                            # convert utilities into probabilities and choose seat based on the resulting probability distribution
-                            #seat_choice = self.model.rand.choice(np.array(seat_options)[np.where(seat_utilities == np.max(seat_utilities))])
-                            utility_subset = [s/sum_utilities for s in utility_subset]
-                            seat_choice = self.model.rand.choice(seat_subset, p=utility_subset)
-                            print("chosen utility: " + str(seat_choice.get_total_utility(self)))
-                            print("max utility: " + str(max(utility_subset)*sum_utilities))
                         else:
-                            # if all utilities are zero, choose the seat randomly
-                            seat_choice = self.model.rand.choice(seat_options)
-                            print("random choice")
+
+                            # determine the best 'seat_fraction' (e.g. 50%) of all available seats
+                            seat_subset, utility_subset = [], []
+                            for i in range(int(self.model.seat_fraction * len(seat_options))):
+                                index = np.argmax(seat_utilities)
+                                seat_subset.append(seat_options[index])
+                                utility_subset.append(seat_utilities[index])
+                                seat_utilities[index] = 0
+                            sum_utilities = sum(utility_subset)
+
+                            if sum_utilities > 0:
+                            # convert utilities into probabilities and choose seat based on the resulting probability distribution
+                                utility_subset = [s/sum_utilities for s in utility_subset]
+                                seat_choice = self.model.rand.choice(seat_subset, p=utility_subset)
+                                print("chosen utility: " + str(seat_choice.get_total_utility(self)))
+                                print("max utility: " + str(max(utility_subset)*sum_utilities))
+
+                            else:
+                                # if all utilities are zero, choose the seat randomly
+                                seat_choice = self.model.rand.choice(seat_options)
+                                print("random choice")
 
                     else:
                         """ only used if 'will_to_change_seat' is enabled """
@@ -355,11 +361,15 @@ class ClassroomModel():
         degree_sequence: list of friendship degrees per student. Used to create the underlying social network in form of a connectivity matrix (1 means friendship, 0 means indifference).
                 If not given, a random social network (erdos renyi) is created
         seed: seed for the random number generation
+        seat_fraction: fraction of available seats to be considered for seat choice
+        deterministic_choice: boolean if students pick deterministically the seat with the highest utility, or if choice is probabilitstic.
     """
-    def __init__(self, classroom_design, coefs=[0.25,0.25,0.25,0.25], sociability_sequence=None, degree_sequence=None, seed=0):
+    def __init__(self, classroom_design, coefs=[0.25,0.25,0.25,0.25], sociability_sequence=None, degree_sequence=None, seed=0, seat_fraction=0.5, deterministic_choice=True):
 
         self.rand = np.random.RandomState(seed)
         self.classroom = classroom_design
+        self.seat_fraction = seat_fraction
+        self.deterministic_choice = deterministic_choice
         self.empty_seats = []
         self.students = []
 
@@ -381,7 +391,7 @@ class ClassroomModel():
             self.social_network = network.erdos_renyi(self.max_num_agents, 0.2)[0]
         else:
             self.max_num_agents = len(degree_sequence)
-            self.social_network = network.walts_graph(degree_sequence, plot=False)[0]
+            self.social_network = network.walts_graph(self.rand.shuffle(degree_sequence), plot=False)[0]
 
         if sociability_sequence is None:
             # default sociability values are sampled uniformly from [0,1]
@@ -389,7 +399,7 @@ class ClassroomModel():
             self.sociability_range = (min(self.sociability_sequence),max(self.sociability_sequence))
         else:
             if len(sociability_sequence) == self.max_num_agents:
-                self.sociability_sequence = deque(sociability_sequence)
+                self.sociability_sequence = deque(self.rand.shuffle(sociability_sequence))
                 self.sociability_range = (min(self.sociability_sequence),max(self.sociability_sequence))
             else:
                 raise ValueError("'sociability_sequence' and 'degree_sequence' must have same length")
