@@ -8,12 +8,14 @@ MODEL_DATA_PATH = "animation_data"
 FILE_NAME = "model_data.json"
 NUM_ITERATIONS = 150
 CLASS_SIZE = 150
-MODEL_COEFS = [[1,0,0,1], [1,0,1,1], [1,1,1,1]]
+MODEL_COEFS = [[0.1,0,0,1], [0.1,0,1,1], [0.1,1,1,1]]
+BINS = [0, 0.1, 0.5]
 
 MODEL_INPUT_PATH = "model_input"
 DEFAULT_DEG_SEQ = "_degree_sequence.pkl"
 DEFAULT_SOC_SEQ = "_sociability_sequence.pkl"
 DEFAULT_POS_UTIL = "pos_utilities.pkl"
+DEFAULT_POS_UTIL_BINS = "pos_utility_bins.pkl"
 
 """
 This module provides methods to run simulations of the ClassroomModel
@@ -35,6 +37,20 @@ def get_default_pos_utilities():
         pos_utilities = process_form.seat_location_scores().T
         with open(file_path, 'wb') as f:
             pickle.dump(pos_utilities, f)
+        return pos_utilities
+
+def get_default_pos_utility_bins():
+
+    file_path = path.join(MODEL_INPUT_PATH, DEFAULT_POS_UTIL_BINS)
+    if path.isfile(file_path):
+        with open(file_path, 'rb') as f:
+            return pickle.load(f)
+
+    else:
+        pos_utilities = process_form.seat_location_bins(BINS).T
+        with open(file_path, 'wb') as f:
+            pickle.dump(pos_utilities, f)
+        print(pos_utilities)
         return pos_utilities
 
 def get_default_sociability_sequence(class_size):
@@ -74,14 +90,18 @@ Args:
     coefs: coefficients for the utility function
     class_size: number of students in the class, forming the social network
     seed: for random number generation
+    seat_fraction: fraction of available seats to be considered for seat choice
 
 Returns:
     model: the created model instance
 """
-def init_default_model(coefs, class_size, seed=0):
+def init_default_model(coefs, class_size, seed=0, seat_fraction=0.5, deterministic_choice=True):
 
     # Using the default classroom size of [6,14,0] blocks and 14 rows
-    classroom = ClassroomDesign(pos_utilities=get_default_pos_utilities())
+    """ run the following to use the entire range of pos_utilities """
+    #classroom = ClassroomDesign(pos_utilities=get_default_pos_utilities())
+    """ run the following to use bins of pos_utilities """
+    classroom = ClassroomDesign(pos_utilities=get_default_pos_utility_bins())
 
     # The degree sequence for the social network is sampled from the observed distribution of number of friends
     degree_sequence = get_default_degree_sequence(class_size)
@@ -90,7 +110,7 @@ def init_default_model(coefs, class_size, seed=0):
     sociability_sequence = get_default_sociability_sequence(class_size)
 
     # create the model
-    model = ClassroomModel(classroom, coefs, sociability_sequence=sociability_sequence, degree_sequence=degree_sequence, seed=seed)
+    model = ClassroomModel(classroom, coefs, sociability_sequence=sociability_sequence, degree_sequence=degree_sequence, seed=seed, seat_fraction=seat_fraction, deterministic_choice=deterministic_choice)
 
     return model
 
@@ -136,7 +156,7 @@ def get_model_state(model):
 
 
     for pos in model.classroom.entrances:
-        image[pos[1],pos[0]] = -2
+        image[pos[1],pos[0]] = -3
 
     return image, info
 
@@ -147,13 +167,13 @@ def generate_model_names():
     for m in MODEL_COEFS:
         name = []
         for i,c in enumerate(m):
-            if i==0 and c==1:
+            if i==0 and c>0:
                 name.append("position")
-            if i==1 and c==1:
+            if i==1 and c>0:
                 name.append("friendship")
-            if i==2 and c==1:
+            if i==2 and c>0:
                 name.append("sociability")
-            if i==3 and c==1:
+            if i==3 and c>0:
                 name.append("accessibility")
         model_names.append(" + ".join(name))
     return model_names
@@ -196,7 +216,11 @@ if __name__ == "__main__":
     # initialize and run models with given utility coefficients [position, friendship, sociability, accessibility]
     models = []
     for coefs in MODEL_COEFS:
-        models.append(init_default_model(coefs, CLASS_SIZE))
+        """ use the following to simulate the model with probabilistic choice among the best seat_fraction percent """
+        #models.append(init_default_model(coefs, CLASS_SIZE, seat_fraction=0.1, deterministic_choice=False))
+
+        """ use the following to simulate the model with deterministic choice of the highest rated seat """
+        models.append(init_default_model(coefs, CLASS_SIZE, deterministic_choice=True))
 
     try:
         generate_data(models, NUM_ITERATIONS, path.join(MODEL_DATA_PATH, sys.argv[1]))

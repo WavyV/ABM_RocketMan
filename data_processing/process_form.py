@@ -133,6 +133,17 @@ def seat_location_scores(convolution_iters=10, plot=False):
         plt.show()
     return seats
 
+def seat_location_bins(bins, convolution_iters=10):
+    """ Return seat location scores reduced to bins.
+    All scores < bin[i] are grouped into bin i.
+    Bins are again normalized to obtain values between 0 and 1. """
+
+    scores = seat_location_scores(convolution_iters=convolution_iters)
+    score_bins = np.digitize(scores, bins)
+    score_bins = score_bins/np.max(score_bins)
+
+    return score_bins
+
 
 def agent_attribute_gen(hist_data, scale_to=None, noise_std_dev=0.25):
     """Return a generator that yields values based on given histogram data.

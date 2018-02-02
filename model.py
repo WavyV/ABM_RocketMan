@@ -68,9 +68,34 @@ class Student():
                     seat_choice = self.model.rand.choice(seat_options)
                 else:
                     if old_seat is None:
-                        # pick seat with highest utility (if multiple seats are optimal, choose one of them randomly)
                         seat_utilities = [seat.get_total_utility(self) for seat in seat_options]
-                        seat_choice = self.model.rand.choice(np.array(seat_options)[np.where(seat_utilities == np.max(seat_utilities))])
+
+                        if self.model.deterministic_choice:
+                            # always choose among the seats with highest utility
+                            seat_choice = self.model.rand.choice(np.array(seat_options)[np.where(seat_utilities == np.max(seat_utilities))])
+
+                        else:
+
+                            # determine the best 'seat_fraction' (e.g. 50%) of all available seats
+                            seat_subset, utility_subset = [], []
+                            for i in range(int(self.model.seat_fraction * len(seat_options))):
+                                index = np.argmax(seat_utilities)
+                                seat_subset.append(seat_options[index])
+                                utility_subset.append(seat_utilities[index])
+                                seat_utilities[index] = 0
+                            sum_utilities = sum(utility_subset)
+
+                            if sum_utilities > 0:
+                            # convert utilities into probabilities and choose seat based on the resulting probability distribution
+                                utility_subset = [s/sum_utilities for s in utility_subset]
+                                seat_choice = self.model.rand.choice(seat_subset, p=utility_subset)
+                                print("chosen utility: " + str(seat_choice.get_total_utility(self)))
+                                print("max utility: " + str(max(utility_subset)*sum_utilities))
+
+                            else:
+                                # if all utilities are zero, choose the seat randomly
+                                seat_choice = self.model.rand.choice(seat_options)
+                                print("random choice")
 
                     else:
                         """ only used if 'will_to_change_seat' is enabled """
@@ -147,7 +172,7 @@ class Seat():
 
         self.model = model
         self.student = None
-        self.accessibility = 0
+        self.accessibility = 1
         self.pos = pos
 
         x, y = pos
@@ -205,7 +230,7 @@ class Seat():
         else:
             count_right = np.infty
 
-        self.accessibility = -min(count_right, count_left)
+        self.accessibility = 1 - min(count_right, count_left)/float(self.model.classroom.max_pass)
 
 
     """
@@ -289,7 +314,7 @@ class Seat():
 
         # scale the final sociability term to range [0,1]
         s_min, s_max = self.model.sociability_range
-        u_sociability = (u_sociability - s_min) / (s_max - s_min)
+        u_sociability = max(0, u_sociability - s_min) / (s_max - s_min)
 
         return u_friendship, u_sociability
 
@@ -336,11 +361,15 @@ class ClassroomModel():
         degree_sequence: list of friendship degrees per student. Used to create the underlying social network in form of a connectivity matrix (1 means friendship, 0 means indifference).
                 If not given, a random social network (erdos renyi) is created
         seed: seed for the random number generation
+        seat_fraction: fraction of available seats to be considered for seat choice
+        deterministic_choice: boolean if students pick deterministically the seat with the highest utility, or if choice is probabilitstic.
     """
-    def __init__(self, classroom_design, coefs=[0.25,0.25,0.25,0.25], sociability_sequence=None, degree_sequence=None, seed=0):
+    def __init__(self, classroom_design, coefs=[0.25,0.25,0.25,0.25], sociability_sequence=None, degree_sequence=None, seed=0, seat_fraction=0.5, deterministic_choice=True):
 
         self.rand = np.random.RandomState(seed)
         self.classroom = classroom_design
+        self.seat_fraction = seat_fraction
+        self.deterministic_choice = deterministic_choice
         self.empty_seats = []
         self.students = []
 
@@ -359,10 +388,10 @@ class ClassroomModel():
         if degree_sequence is None:
             # create a random network
             self.max_num_agents = self.classroom.seat_count
-            self.social_network = network.erdos_renyi(self.max_num_agents, 0.2)
+            self.social_network = network.erdos_renyi(self.max_num_agents, 0.2)[0]
         else:
             self.max_num_agents = len(degree_sequence)
-            self.social_network = network.walts_graph(degree_sequence, plot=False)[0]
+            self.social_network = network.walts_graph(self.rand.shuffle(degree_sequence), plot=False)[0]
 
         if sociability_sequence is None:
             # default sociability values are sampled uniformly from [0,1]
@@ -370,7 +399,7 @@ class ClassroomModel():
             self.sociability_range = (min(self.sociability_sequence),max(self.sociability_sequence))
         else:
             if len(sociability_sequence) == self.max_num_agents:
-                self.sociability_sequence = deque(sociability_sequence)
+                self.sociability_sequence = deque(self.rand.shuffle(sociability_sequence))
                 self.sociability_range = (min(self.sociability_sequence),max(self.sociability_sequence))
             else:
                 raise ValueError("'sociability_sequence' and 'degree_sequence' must have same length")
@@ -440,7 +469,7 @@ class ClassroomModel():
         model_state: binary matrix where each entry refers to a seat's state
     """
     def get_binary_model_state(self):
-        model_state = np.zeros((self.classroom.width, self.classroom.num_rows))
+        model_state = np.zeros((self.classroom.width, self.classroom.num_rows), dtype=int)
         for seat in self.seats.flat:
             # model_state[student.pos] = 1
             if seat is not None and seat.student:
@@ -505,17 +534,17 @@ class ClassroomDesign():
         # define utility/attractivity of each seat location
         # if the utility matrix does not include aisles, insert zeros at the respective positions
 
-        # if pos_utilities.shape == (self.width - len(self.aisles_x), num_rows - len(self.aisles_y)):
-        #     for x in self.aisles_x:
-        #         if x < pos_utilities.shape[0]:
-        #             pos_utilities = np.insert(pos_utilities, x, 0, axis=0)
-        #         else:
-        #             pos_utilities = np.concatenate((pos_utilities, np.zeros((1,pos_utilities.shape[1]))), axis=0)
-        #     for y in self.aisles_y:
-        #         if y < pos_utilities.shape[1]:
-        #             pos_utilities = np.insert(pos_utilities, y, 0, axis=1)
-        #         else:
-        #             pos_utilities = np.concatenate((pos_utilities, np.zeros((pos_utilities.shape[0],1))), axis=1)
+        if pos_utilities is not None and pos_utilities.shape == (self.width - len(self.aisles_x), num_rows - len(self.aisles_y)):
+            for x in self.aisles_x:
+                if x < pos_utilities.shape[0]:
+                    pos_utilities = np.insert(pos_utilities, x, 0, axis=0)
+                else:
+                    pos_utilities = np.concatenate((pos_utilities, np.zeros((1,pos_utilities.shape[1]))), axis=0)
+            for y in self.aisles_y:
+                if y < pos_utilities.shape[1]:
+                    pos_utilities = np.insert(pos_utilities, y, 0, axis=1)
+                else:
+                    pos_utilities = np.concatenate((pos_utilities, np.zeros((pos_utilities.shape[0],1))), axis=1)
 
         if pos_utilities is not None and pos_utilities.shape == (self.width, num_rows) and np.max(pos_utilities) > 0:
             # scale the given attractivity weights to assure values in range [0,1]

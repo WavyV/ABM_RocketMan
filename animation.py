@@ -35,7 +35,7 @@ def hover(event):
                 text = ""
                 if value == -0.8:
                     text = "AISLE"
-                elif value == -2:
+                elif value == -3:
                     text = "DOOR"
                 elif value <= -1:
                     text = "EMPTY SEAT\nSeat attractivity: {:.2f}\nAccessibility: {:.2f}".format(seat_utility, value + 2)
