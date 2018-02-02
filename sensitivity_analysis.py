@@ -38,7 +38,6 @@ OFAT_RESULTS_FILENAME = "_ofat-runs-{}-samples-{}.pickle".format(
 # Sobol parameters
 SOBOL_SAMPLES = 1000  # Total Saltelli samples: `SOBOL_SAMPLES` * 12
 SOBOL_RESULTS_FILENAME = "_sobol-samples-{}.pickle".format(SOBOL_SAMPLES)
-MAX_SOBOL_THREADS = 4
 
 # The output measures used to analyze the final state of a model.
 # Each function takes a model (in end state) as first and only argument.
@@ -156,16 +155,22 @@ def display_sobol_results(results, parameters=PARAMETERS,
         sensitivity = sobol.analyze(
             parameters, np.array(list(map(lambda x: x[i], results))))
         pprint(sensitivity)
-        _, (ax1, ax2) = plt.subplots(1, 2)
-        for key, ax, order in zip(["S1", "ST"], [ax1, ax2], ["first", "total"]):
+
+        for key, order in zip(["S1", "ST"], ["first", "total"]):
+            ax = plt.gca()
             ax.set_yticks(range(num_params))
             ax.set_yticklabels(parameters["names"])
-            ax.errorbar(sensitivity[key],
-                        range(num_params),
-                        xerr=sensitivity["{}_conf".format(key)],
-                        fmt="o")
             ax.set_title("{} order sensitivity".format(order))
-        plt.show()
+            plt.errorbar(sensitivity[key],
+                         range(num_params),
+                         xerr=sensitivity["{}_conf".format(key)],
+                         fmt="o")
+
+            plt.savefig(os.path.join(
+                RESULTS_PATH,
+                "sobol-measure-{}-samples-{}-order-{}.png".format(
+                    comparison_method, SOBOL_SAMPLES, order)))
+            plt.show()
 
 
 def run_ofat_analysis(parameters=PARAMETERS,
@@ -194,11 +199,12 @@ def run_ofat_analysis(parameters=PARAMETERS,
 
     """
     # Set up before the run, including results matrix.
+    num_points = 4  # min, max, mean , variance
     results = np.empty(
         (samples_per_param,
          len(parameters["names"]),
          len(comparison_methods),
-         3))
+         num_points))
     default_params = parameters["_defaults"]
     run_count = 0
 
@@ -233,16 +239,18 @@ def run_ofat_analysis(parameters=PARAMETERS,
                     run_count, sample_params, measures))
 
             # Set the element E (see function docstring) in results matrix.
-            E = np.empty((len(comparison_methods), 3))
+            E = np.empty((len(comparison_methods), num_points))
             # TODO: Why is this axis=0 and not axis=1 :s ? But it works so..
             mean = np.array(sample_measures).mean(axis=0)
             min_ = np.array(sample_measures).min(axis=0)
             max_ = np.array(sample_measures).max(axis=0)
+            var = np.array(sample_measures).var(axis=0)
             print("min: {}".format(min_))
             print("mean: {}".format(mean))
             print("max: {}".format(max_))
+            print("var: {}".format(var))
             for k in range(len(comparison_methods)):
-                E[k] = [min_[k], max_[k], mean[k]]
+                E[k] = [min_[k], max_[k], mean[k], var[k]]
             results[i][j] = E
     return results
 
@@ -281,9 +289,12 @@ def display_ofat_results(results, parameters=PARAMETERS,
         min_plot_data = ofat_single_comparison_results(results, k, 0)
         max_plot_data = ofat_single_comparison_results(results, k, 1)
         mean_plot_data = ofat_single_comparison_results(results, k, 2)
+        var_plot_data = ofat_single_comparison_results(results, k, 3)
 
         for j, param_name in enumerate(parameters["names"]):
             bounds = parameters["bounds"][j]
+            print("variance: {} measure, parameter {}:\n\t{}".format(
+                comparison_method, param_name, var_plot_data[:, j]))
 
             for label, plot_data in zip(
                     ["min", "max", "mean"],
@@ -295,6 +306,11 @@ def display_ofat_results(results, parameters=PARAMETERS,
                     comparison_method, param_name))
 
             plt.legend()
+            plt.savefig(os.path.join(
+                RESULTS_PATH,
+                "ofat-measure-{}-parameter-{}-samples-{}-replicates-{}.png".format(
+                    comparison_method, param_name, SAMPLES_PER_PARAM,
+                    RUNS_PER_SAMPLE)))
             plt.show()
 
 
