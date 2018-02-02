@@ -1,6 +1,6 @@
 from model import *
 from social import network
-from data_processing import process_form
+from data_processing import process_form, form_answers
 import model_comparison
 import run_model
 import matplotlib.pyplot as plt
@@ -12,6 +12,8 @@ import json
 
 MODEL_DATA_PATH = "model_output/parameter_estimation"
 FILE_NAME = time.strftime("%Y%m%d-%H%M%S") + ".json"
+
+DATA = ['fri-form.json', 'thurs-9-form.json', 'wed_24.json']
 
 RESULTS_JSON = []
 
@@ -30,7 +32,7 @@ Args:
 Returns:
     mean_error: mean MSE between model output profiles and target output profiles
 """
-def objective_function(coefs, class_size, num_iterations, num_repetitions, target_output, method):
+def objective_function(coefs, num_repetitions, method):
 
     # assure that the coefficients sum up to one
     coefs = [(c/sum(coefs) if sum(coefs) > 0 else 0) for c in coefs]
@@ -38,19 +40,24 @@ def objective_function(coefs, class_size, num_iterations, num_repetitions, targe
     print("run the model with coefficients [{:.4f} {:.4f} {:.4f} {:.4f}]".format(coefs[0],coefs[1],coefs[2],coefs[3]))
 
     # run the model several times to handle stochasticity
-    model_outputs = []
     errors = []
-    for seed in range(num_repetitions):
-        print("repetition {}".format(seed + 1))
-        model = run_model.init_default_model(coefs, class_size, seed)
-        for n in range(num_iterations):
-            model.step()
-        model_output = model.get_binary_model_state()
-        model_outputs.append(model_output)
+    for dataset in DATA:
+        print("compare to the following dataset: {}".format(dataset))
+        # get target seating pattern from collected data
+        target_output = np.minimum(form_answers.get_seats(form_answers.load(dataset), "seatlocation"),1)
+        class_size = int(np.sum(target_output))
 
-        # compute the error between model output and target output
-        aisles_x = model.classroom.aisles_x
-        errors.append(model_comparison.compare(model_output, target_output, method=method, aisles=aisles_x))
+        for seed in range(num_repetitions):
+            # run multiple simulations for each dataset
+            print("repetition {}".format(seed + 1))
+            model = run_model.init_default_model(coefs, class_size, seed)
+            for n in range(class_size):
+                model.step()
+            model_output = model.get_binary_model_state()
+
+            # compute the error between model output and target output
+            aisles_x = model.classroom.aisles_x
+            errors.append(model_comparison.compare(model_output, target_output, method=method, aisles=aisles_x))
 
     # compute the error averaged over the set of runs
     mean_error = np.mean(errors)
@@ -98,22 +105,16 @@ if __name__ == "__main__":
     run the parameter estimation
     """
 
-    class_size = 200 # a social network with 200 students is used
-    num_iterations = 25 # 25 students are sampled from this network and enter the classroom one by one
+    method = 'entropy' # the method used for comparison. One of {'lbp', 'cluster', 'entropy'}
+    num_repetitions = 10 # number of runs with different random seeds per parameter combination and per dataset
+    bounds = [[0.0, 1.0], [0.0, 1.0], [0.0, 1.0], [0.0, 1.0]] # bounds for the parameters to be estimated
+    x0 = np.array([0.25, 0.25, 0.25, 0.25]) # initial guess for parameters
 
-    target_output = create_random_test_output(20, 13, num_iterations) # dummpy seating distribution for comparison
-    method = 'lbp' # the method used for comparison
-    num_repetitions = 10 # number of runs with different random seeds per parameter combination
-
-    # bounds for the parameters to be estimated
-    bounds = [[0.0, 1.0], [0.0, 1.0], [0.0, 1.0], [0.0, 1.0]]
-
-    # initial guess
-    x0 = np.array([0.25, 0.25, 0.25, 0.25])
 
     # simultaneous perturbation stochastic approximation algorithm
+    # TODO: play with 'a'-values and 'niter' to get good results
     result = minimizeSPSA(objective_function, x0,
-            args=(class_size, num_iterations, num_repetitions, target_output, method),
+            args=(num_repetitions, method),
             bounds=bounds, niter=10, a=0.1, paired=False)
 
     save_json()
