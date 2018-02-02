@@ -26,12 +26,14 @@ For OFAT analysis generate the data and analyze it separately:
 For Sobol analysis generate the data and analyze it separately:
     python3 sensitivity_analysis.py --sobol-run
     python3 sensitivity_analysis.py --sobol-analysis
+
+NOTE: Between a run and analysis the parameters below should remain unchanged.
 """
 
 
 # OFAT parameters
 RUNS_PER_SAMPLE = 10  # Amount of replicates per run.
-SAMPLES_PER_PARAM = 10  # Points on the interval per parameter.
+SAMPLES_PER_PARAM = 15  # Points on the interval per parameter.
 OFAT_RESULTS_FILENAME = "_ofat-runs-{}-samples-{}.pickle".format(
     RUNS_PER_SAMPLE, SAMPLES_PER_PARAM)
 
@@ -43,10 +45,18 @@ SOBOL_RESULTS_FILENAME = "_sobol-samples-{}.pickle".format(SOBOL_SAMPLES)
 # Each function takes a model (in end state) as first and only argument.
 COMPARISONS = collections.OrderedDict({
     "happiness": lambda m: sum(sum(m.get_happiness_model_state())),
-    # "clusters": lambda m: sum(
-    #     model_comparison.count_clusters(m.get_binary_model_state())),
-    # "entropy": lambda m: sum(
-    #     model_comparison.get_entropy(m.get_binary_model_state()))
+
+    "homogeneity": lambda m: model_comparison.get_characteristic_value(
+        m.get_binary_model_state()),
+
+    "correlation": lambda m: model_comparison.get_characteristic_value(
+        m.get_binary_model_state(), method="correlation"),
+
+    "rl_nonuniformity": lambda m: model_comparison.get_characteristic_value(
+        m.get_binary_model_state(), method="rl_nonuniformity"),
+
+    "rl_long_run_emphasis": lambda m: model_comparison.get_characteristic_value(
+        m.get_binary_model_state(), method="rl_long_run_emphasis")
 })
 
 # Iterations to run each model for.
