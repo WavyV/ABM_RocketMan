@@ -99,7 +99,9 @@ class Student():
                         coef_p = self.model.coefs[0]
                         for seat in seat_options:
                             utility = seat.get_total_utility(self)
-                            pos_util = 1 if moore_distance(seat.pos, self.prefered_seat) <= 3 else 0
+                            x1, y1 = seat.pos
+                            x2, y2 = self.prefered_seat
+                            pos_util = 1 if abs(x1-x2) <= 7 and abs(y1-y2) <= 2 else 0
                             seat_utilities.append(utility + coef_p * pos_util)
 
                         seat_choice = self.model.rand.choice(np.array(seat_options)[np.where(seat_utilities == np.max(seat_utilities))])
@@ -179,7 +181,7 @@ class Seat():
 
         self.model = model
         self.student = None
-        self.accessibility = 0
+        self.accessibility = 1
         self.pos = pos
 
         x, y = pos
@@ -237,7 +239,7 @@ class Seat():
         else:
             count_right = np.infty
 
-        self.accessibility = -min(count_right, count_left)
+        self.accessibility = self.accessibility = 1 - min(count_right, count_left)/float(self.model.classroom.max_pass)
 
 
     """
@@ -337,20 +339,24 @@ class Seat():
         coef_p, coef_f, coef_s, coef_a = self.model.coefs
         total_utility = coef_f * friendship_component + coef_s * sociability_component + coef_a * self.accessibility
 
+        # return 0
         return total_utility
 
     """
     Get the student's happiness for this Seat as a linear combination of position, friendship and sociability components.
-    It is assumed that the accessibility does not influence the happiness one the student is seated.
+    It is assumed that the accessibility does not influence the happiness once the student is seated.
 
     Returns:
         happiness: total seat utility except for the accessibility component
     """
     def get_happiness(self, student):
+        x1, y1 = self.pos
+        x2, y2 = student.prefered_seat
+        pos_util = 1 if abs(x1-x2) <= 5 and abs(y1-y2) <= 4 else 0
 
         friendship_component, sociability_component = self.get_social_utility(student)
         coef_p, coef_f, coef_s, coef_a = self.model.coefs
-        total_utility = coef_f * friendship_component + coef_s * sociability_component
+        total_utility = coef_p * pos_util + coef_f * friendship_component + coef_s * sociability_component
 
         return total_utility
 
@@ -434,6 +440,12 @@ class ClassroomModel():
 
         # as long as the max number of students is not reached, add a new one
         n = len(self.students)
+
+        # if n == 0:
+        #     # manually place first student...
+        #     student = Student(n, self)
+        #     self.students.append(student)
+        #     student.choose_seat((13, 5))
         if n < self.max_num_agents:
             # create student
             if self.coefs[2] != 0:

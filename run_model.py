@@ -8,7 +8,8 @@ MODEL_DATA_PATH = "animation_data"
 FILE_NAME = "model_data.json"
 NUM_ITERATIONS = 150
 CLASS_SIZE = 150
-MODEL_COEFS = [[1,0,0,1], [1,0,1,1], [1,1,1,1]]
+# Position + Friendship + Sociability + Accessibility
+MODEL_COEFS = [[0,1,0,0], [0,1,1,0], [0,1,0,1]]
 
 MODEL_INPUT_PATH = "model_input"
 DEFAULT_DEG_SEQ = "_degree_sequence.pkl"
@@ -147,15 +148,18 @@ def generate_model_names():
     for m in MODEL_COEFS:
         name = []
         for i,c in enumerate(m):
-            if i==0 and c==1:
+            if i==0 and c>0:
                 name.append("position")
-            if i==1 and c==1:
+            if i==1 and c>0:
                 name.append("friendship")
-            if i==2 and c==1:
+            if i==2 and c>0:
                 name.append("sociability")
-            if i==3 and c==1:
+            if i==3 and c>0:
                 name.append("accessibility")
-        model_names.append(" + ".join(name))
+        if sum(m) == 0:
+            model_names.append("random")
+        else:
+            model_names.append(" + ".join(name))
     return model_names
 
 
@@ -183,6 +187,11 @@ def generate_data(models, num_iterations, data_path=None):
     with open(data_path, "wb") as f:
         pickle.dump(data, f)
 
+def final_model(model, num_iterations):
+    """Return the final model state after running for given iterations."""
+    for _ in range(num_iterations):
+        model.step()
+    return model
 
 if __name__ == "__main__":
 
