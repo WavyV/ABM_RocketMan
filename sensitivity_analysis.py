@@ -50,7 +50,7 @@ COMPARISONS = collections.OrderedDict({
 })
 
 # Iterations to run each model for.
-MODEL_ITERATIONS = 300
+MODEL_ITERATIONS = 240
 
 # Parameters in the funky format that SALib expects.
 # These parameters are used by both OFAT and Sobol.
@@ -165,7 +165,8 @@ def display_sobol_results(results, parameters=PARAMETERS,
             plt.errorbar(sensitivity[key],
                          range(num_params),
                          xerr=sensitivity["{}_conf".format(key)],
-                         fmt="o")
+                         fmt="o",
+                         capsize=4)
 
             plt.savefig(os.path.join(
                 RESULTS_PATH,
@@ -297,16 +298,22 @@ def display_ofat_results(results, parameters=PARAMETERS,
             print("variance: {} measure, parameter {}:\n\t{}".format(
                 comparison_method, param_name, var_plot_data[:, j]))
 
-            for label, plot_data in zip(
-                    ["min", "max", "mean"],
-                    [min_plot_data, max_plot_data, mean_plot_data]):
-                plt.scatter(np.linspace(*bounds, results.shape[0]),
-                            plot_data[:, j],
-                            label=label)
-                plt.title("{} measure for parameter {}".format(
-                    comparison_method, param_name))
+            # for label, plot_data in zip(
+            #         ["min", "max", "mean"],
+            #         [min_plot_data, max_plot_data, mean_plot_data]):
+            #     plt.scatter(np.linspace(*bounds, results.shape[0]),
+            #                 plot_data[:, j],
+            #                 label=label)
+            #     plt.title("{} measure for parameter {}".format(
+            #         comparison_method, param_name))
 
-            plt.legend()
+            err_min = mean_plot_data[:, j] - min_plot_data[:, j]
+            err_max = max_plot_data[:, j] - mean_plot_data[:, j]
+            plt.errorbar(np.linspace(*bounds, results.shape[0]), mean_plot_data[:, j], yerr=[err_max, err_min], ls='None', marker='o', ms=4, capsize=3)
+
+            plt.title("{} measure for parameter {}".format(comparison_method, param_name))
+
+            # plt.legend()
             plt.savefig(os.path.join(
                 RESULTS_PATH,
                 "ofat-measure-{}-parameter-{}-samples-{}-replicates-{}.png".format(
