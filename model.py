@@ -314,7 +314,10 @@ class Seat():
 
         # scale the final sociability term to range [0,1]
         s_min, s_max = self.model.sociability_range
-        u_sociability = max(0, u_sociability - s_min) / (s_max - s_min)
+        if s_max > s_min:
+            u_sociability = max(0, u_sociability - s_min) / (s_max - s_min)
+        else:
+            u_sociability = s_min
 
         return u_friendship, u_sociability
 
