@@ -4,8 +4,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
 
-from data_processing import form_answers
-from data_processing import taken_seats
+try:
+    from data_processing import form_answers
+    from data_processing import taken_seats
+except ModuleNotFoundError:
+    import form_answers
+    import taken_seats
 
 """
 Process form answers into useful information for the model.
@@ -132,6 +136,7 @@ def seat_location_scores(convolution_iters=10, plot=False):
         plt.colorbar()
         plt.show()
     return seats
+
 
 def seat_location_bins(bins, convolution_iters=10):
     """ Return seat location scores reduced to bins.
