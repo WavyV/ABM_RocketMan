@@ -1,4 +1,3 @@
-from concurrent.futures import ThreadPoolExecutor
 import collections
 import pickle
 import sys
@@ -125,14 +124,13 @@ def run_sobol_analysis(parameters=PARAMETERS, num_samples=SOBOL_SAMPLES,
 
     # Calculate measures for each sample and append to this results array.
     results = []
-    with ThreadPoolExecutor(max_workers=MAX_SOBOL_THREADS) as executor:
-        run_count = 0
-        for measures, sample_params in (
-                zip(executor.map(get_sample_measures, samples), samples)):
-            print("\nRun: {}\nparameters: {}\nmeasures: {}\nfixed class size: {}".format(
-                    run_count, sample_params, measures, fixed_class_size))
-            run_count += 1
-            results.append(measures)
+    run_count = 0
+    for measures, sample_params in (
+            zip(map(get_sample_measures, samples), samples)):
+        print("\nRun: {}\nparameters: {}\nmeasures: {}\nfixed class size: {}".format(
+                run_count, sample_params, measures, fixed_class_size))
+        run_count += 1
+        results.append(measures)
 
     return results
 
