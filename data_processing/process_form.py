@@ -139,7 +139,7 @@ def agent_attribute_gen(hist_data, scale_to=None, noise_std_dev=0.25):
 
     `noise_std_dev` is the std deviations of noise measured in bin sizes.
     """
-    bin_heights, bin_ranges, _ = hist_data
+    bin_heights, bin_ranges = hist_data
     bin_probs = [x/sum(bin_heights) for x in bin_heights]
     bin_indices = list(range(len(bin_heights)))
     bin_max = max(bin_ranges)

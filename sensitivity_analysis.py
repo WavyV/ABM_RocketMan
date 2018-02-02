@@ -1,5 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor
 import collections
-import concurrent
 import pickle
 import sys
 
@@ -17,8 +17,7 @@ import model_comparison
 This module is for sensitivity analysis using OFAT and Sobol methods.
 
 The OFAT and Sobol parameters are global variables, documented below. Other
-parameters, used by both methods are also found as global variables, again
-documented.
+parameters, used by both methods are also found similarly.
 
 For OFAT analysis generate the data and analyze it separately:
     python3 sensitivity_analysis.py --ofat-run
@@ -36,8 +35,9 @@ SAMPLES_PER_PARAM = 10  # Points on the interval per parameter.
 OFAT_RESULTS_FILENAME = "_ofat_results.pickle"
 
 # Sobol parameters
-NUM_SAMPLES = 1000  # Total samples using Saltelli sampling: `NUM_SAMPLES` * 12
-RESULTS_FILENAME = "sobol_results.pickle"
+SOBOL_SAMPLES = 1000  # Total Saltelli samples: `SOBOL_SAMPLES` * 12
+SOBOL_RESULTS_FILENAME = "_sobol_results.pickle"
+MAX_SOBOL_THREADS = 4
 
 # The output measures used to analyze the final state of a model.
 # Each function takes a model (in end state) as first and only argument.
@@ -97,10 +97,9 @@ def run(b1, b2, b3, b4, class_size, model_iterations, comparison_methods,
     return list(map(lambda x: 0 if np.isinf(x) else x, comparison_values))
 
 
-def run_sobol_analysis(parameters=PARAMETERS, num_samples=NUM_SAMPLES,
+def run_sobol_analysis(parameters=PARAMETERS, num_samples=SOBOL_SAMPLES,
                        model_iterations=MODEL_ITERATIONS,
                        comparison_methods=COMPARISONS,
-                       results_filename=RESULTS_FILENAME,
                        fixed_class_size=None):
     """Run, print and save sensitivity analysis.
 
@@ -109,7 +108,6 @@ def run_sobol_analysis(parameters=PARAMETERS, num_samples=NUM_SAMPLES,
         num_samples: int, amount of samples, as per the argument to salib.
         model_iterations: int, amount of iterations to run each model.
         comparison_methods: dict of string to comparison function.
-        results_filename: str, where to save the sobol results.
         fixed_class_size: int, fix class size to given number (note that in
             this case class size must not be in the given parameters)
     """
@@ -117,7 +115,7 @@ def run_sobol_analysis(parameters=PARAMETERS, num_samples=NUM_SAMPLES,
     samples = saltelli.sample(parameters, num_samples)
     print("\nTotal runs: {}".format(samples.shape[0]))
 
-    def sample_measures(sample):
+    def get_sample_measures(sample):
         """Return output measures for the given sample."""
         return run(*sample,
                    fixed_class_size=fixed_class_size,
@@ -126,29 +124,45 @@ def run_sobol_analysis(parameters=PARAMETERS, num_samples=NUM_SAMPLES,
 
     # Calculate measures for each sample and append to this results array.
     results = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+    with ThreadPoolExecutor(max_workers=MAX_SOBOL_THREADS) as executor:
         run_count = 0
         for measures, sample_params in (
-                zip(executor.map(sample_measures, samples), samples)):
+                zip(executor.map(get_sample_measures, samples), samples)):
             print("\nRun: {}\nparameters: {}\nmeasures: {}\nfixed class size: {}".format(
-                  run_count, sample_params, measures, fixed_class_size))
+                    run_count, sample_params, measures, fixed_class_size))
             run_count += 1
             results.append(measures)
 
-    # Calculate and print sensitivity analysis results.
+    return results
+
+
+def display_sobol_results(results, parameters=PARAMETERS,
+                          comparison_methods=COMPARISONS):
+    """Analyze and display Sobol analysis on the given data.
+
+    Args:
+        results: the data as returned by `run_sobol_analysis`.
+        parameters: dict, of parameter ranges, see PARAMETERS.
+        comparison_methods: dict of string to comparison function.
+    """
+    num_params = len(parameters["names"])
+    parameters["num_vars"] = num_params
+    print("Total samples: {}".format(len(results)))
     for i, comparison_method in enumerate(comparison_methods):
         print("\nSensitivity using {0}:\n".format(comparison_method))
         sensitivity = sobol.analyze(
             parameters, np.array(list(map(lambda x: x[i], results))))
         pprint(sensitivity)
-
-    # Finally save results to given filename.
-    with open(results_filename, "wb") as f:
-        f.write(pickle.dumps({
-            "sensitivity": sensitivity,
-            "data": results
-        }))
-    print("Saved results to {0}".format(results_filename))
+        _, (ax1, ax2) = plt.subplots(1, 2)
+        for key, ax, order in zip(["S1", "ST"], [ax1, ax2], ["first", "total"]):
+            ax.set_yticks(range(num_params))
+            ax.set_yticklabels(parameters["names"])
+            ax.errorbar(sensitivity[key],
+                        range(num_params),
+                        xerr=sensitivity["{}_conf".format(key)],
+                        fmt="o")
+            ax.set_title("{} order sensitivity".format(order))
+        plt.show()
 
 
 def run_ofat_analysis(parameters=PARAMETERS,
@@ -287,18 +301,25 @@ if __name__ == "__main__":
         results = run_ofat_analysis()
         with open(OFAT_RESULTS_FILENAME, "wb") as f:
             pickle.dump(results, f)
+        print("\nSaved results to {}".format(OFAT_RESULTS_FILENAME))
 
     elif "--ofat-analysis" in sys.argv:
-        print("Starting OFAT analysis...\n")
+        print("Starting OFAT analysis...\nLoaded results from {}".format(
+            OFAT_RESULTS_FILENAME))
         with open(OFAT_RESULTS_FILENAME, "rb") as f:
             results = pickle.load(f)
         display_ofat_results(results)
 
-    # Run with default settings.
-    # run_sobol_analysis()
+    elif "--sobol-run" in sys.argv:
+        print("Starting SOBOL run...\n")
+        results = run_sobol_analysis()
+        with open(SOBOL_RESULTS_FILENAME, "wb") as f:
+            pickle.dump(results, f)
+        print("\nSaved results to {}".format(SOBOL_RESULTS_FILENAME))
 
-    # Run with fixed class size.
-    # run_sobol_analysis(fixed_class_size=200)
-
-    # OFAT!
-    # results = run_ofat_analysis()
+    elif "--sobol-analysis" in sys.argv:
+        print("Starting SOBOL analysis...\nLoaded results from {}".format(
+            SOBOL_RESULTS_FILENAME))
+        with open(SOBOL_RESULTS_FILENAME, "rb") as f:
+            results = pickle.load(f)
+        display_sobol_results(results)
