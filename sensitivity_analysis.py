@@ -32,11 +32,12 @@ For Sobol analysis generate the data and analyze it separately:
 # OFAT parameters
 RUNS_PER_SAMPLE = 10  # Amount of replicates per run.
 SAMPLES_PER_PARAM = 10  # Points on the interval per parameter.
-OFAT_RESULTS_FILENAME = "_ofat_results.pickle"
+OFAT_RESULTS_FILENAME = "_ofat-runs-{}-samples-{}.pickle".format(
+    RUNS_PER_SAMPLE, SAMPLES_PER_PARAM)
 
 # Sobol parameters
 SOBOL_SAMPLES = 1000  # Total Saltelli samples: `SOBOL_SAMPLES` * 12
-SOBOL_RESULTS_FILENAME = "_sobol_results.pickle"
+SOBOL_RESULTS_FILENAME = "_sobol-samples-{}.pickle".format(SOBOL_SAMPLES)
 MAX_SOBOL_THREADS = 4
 
 # The output measures used to analyze the final state of a model.
