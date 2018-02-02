@@ -96,13 +96,15 @@ In general, use the ClassroomModel() constructor to create a model with the desi
 
 #### Animation of the Simulated Seating Process
 
-First run the following to generate some simulation data.
+First run the below command to generate some simulation data.
 
 ```
     $ python3 run_model.py [file_name]
 ```
-The model states at each time point will be saved to ``animation_data/model_data.json`` or if specified to ``animation_data/file_name``.
-To simulate a customized model instead of the default one, create a ClassroomModel instance with the desired characteristics. Then run the ``generate_data()`` method to generate the data for animation.
+
+The model state at each time point will be saved to `animation_data/model_data.json` or if specified to `animation_data/file_name`. Noting that `[filename]` is an optional argument in the command above, and in the animation below.
+
+Simulating a customized model instead of the default one needs to done programmatically. Create a `ClassroomModel` instance with the desired characteristics. Then run the `generate_data()` method to generate the data for animation command below.
 
 And then you can visualize the seating process of the generated data with:
 
