@@ -161,6 +161,7 @@ def display_sobol_results(results, parameters=PARAMETERS,
             ax.set_yticks(range(num_params))
             ax.set_yticklabels(parameters["names"])
             ax.set_title("{} order sensitivity".format(order))
+            ax.set_xlim([-0.05, 0.9])
             plt.errorbar(sensitivity[key],
                          range(num_params),
                          xerr=sensitivity["{}_conf".format(key)],
