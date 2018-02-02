@@ -34,7 +34,7 @@ Returns:
     A numpy list of counts, where the ith element corresponds to the number of
     i lengthed groups, up to the max possible length defined by the aisles
 """
-def count_clusters(model_state, aisles):
+def count_clusters(model_state, aisles=[6]):
     # where the final counts will be stored
     counts = np.zeros(model_state.shape[1] + 1)
 

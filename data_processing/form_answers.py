@@ -35,19 +35,19 @@ def get_int_answers(data, question_key, leq_5=False):
     return list(answers)
 
 
-def answers_and_hist(data, question_key, bins, plot=False, title=None,
+def answers_and_hist(data, question_key, bins="auto", plot=False, title=None,
                      leq_5=False):
     """Return a list of int data with given key.
     If `plot`, plot a histogram of the data.
     For `leq_5` see the function `get_int_answers`.
     """
     answers = get_int_answers(data, question_key, leq_5=leq_5)
-    hist = plt.hist(answers, bins=bins)
+    hist = np.histogram(answers, bins=bins)
     if plot:
+        plt.hist(answers, bins=bins)
         if title:
             plt.title(title)
         plt.show()
-    plt.gcf().clear()
     return answers, hist
 
 

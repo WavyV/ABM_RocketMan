@@ -4,8 +4,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
 
-from data_processing import form_answers
-from data_processing import taken_seats
+try:
+    from data_processing import form_answers
+    from data_processing import taken_seats
+except ModuleNotFoundError:
+    import form_answers
+    import taken_seats
 
 """
 Process form answers into useful information for the model.
@@ -133,6 +137,7 @@ def seat_location_scores(convolution_iters=10, plot=False):
         plt.show()
     return seats
 
+
 def seat_location_bins(bins, convolution_iters=10):
     """ Return seat location scores reduced to bins.
     All scores < bin[i] are grouped into bin i.
@@ -150,7 +155,7 @@ def agent_attribute_gen(hist_data, scale_to=None, noise_std_dev=0.25):
 
     `noise_std_dev` is the std deviations of noise measured in bin sizes.
     """
-    bin_heights, bin_ranges, _ = hist_data
+    bin_heights, bin_ranges = hist_data
     bin_probs = [x/sum(bin_heights) for x in bin_heights]
     bin_indices = list(range(len(bin_heights)))
     bin_max = max(bin_ranges)

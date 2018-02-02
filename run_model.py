@@ -82,7 +82,6 @@ def get_default_degree_sequence(class_size):
         return degree_sequence
 
 
-
 """
 Initialize the default ClassroomModel (based on collected data)
 
@@ -95,25 +94,32 @@ Args:
 Returns:
     model: the created model instance
 """
-def init_default_model(coefs, class_size, seed=0, seat_fraction=0.5, deterministic_choice=True):
+def init_default_model(coefs, class_size, seed=0, seat_fraction=0.5,
+                       deterministic_choice=True):
 
     # Using the default classroom size of [6,14,0] blocks and 14 rows
+
     """ run the following to use the entire range of pos_utilities """
     #classroom = ClassroomDesign(pos_utilities=get_default_pos_utilities())
+
     """ run the following to use bins of pos_utilities """
     classroom = ClassroomDesign(pos_utilities=get_default_pos_utility_bins())
 
-    # The degree sequence for the social network is sampled from the observed distribution of number of friends
+    # The degree sequence for the social network is sampled from the observed
+    # distribution of number of friends
     degree_sequence = get_default_degree_sequence(class_size)
 
     # The sociability sequence is sampled from the observed distribution
     sociability_sequence = get_default_sociability_sequence(class_size)
 
     # create the model
-    model = ClassroomModel(classroom, coefs, sociability_sequence=sociability_sequence, degree_sequence=degree_sequence, seed=seed, seat_fraction=seat_fraction, deterministic_choice=deterministic_choice)
+    model = ClassroomModel(classroom, coefs,
+                           sociability_sequence=sociability_sequence,
+                           degree_sequence=degree_sequence, seed=seed,
+                           seat_fraction=seat_fraction,
+                           deterministic_choice=deterministic_choice)
 
     return model
-
 
 
 """
@@ -202,6 +208,13 @@ def generate_data(models, num_iterations, data_path=None):
         data_path = path.join(MODEL_DATA_PATH, FILE_NAME)
     with open(data_path, "wb") as f:
         pickle.dump(data, f)
+
+
+def final_model(model, num_iterations):
+    """Return the final model state after running for given iterations."""
+    for _ in range(num_iterations):
+        model.step()
+    return model
 
 
 if __name__ == "__main__":

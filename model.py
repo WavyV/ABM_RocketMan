@@ -364,7 +364,9 @@ class ClassroomModel():
         seat_fraction: fraction of available seats to be considered for seat choice
         deterministic_choice: boolean if students pick deterministically the seat with the highest utility, or if choice is probabilitstic.
     """
-    def __init__(self, classroom_design, coefs=[0.25,0.25,0.25,0.25], sociability_sequence=None, degree_sequence=None, seed=0, seat_fraction=0.5, deterministic_choice=True):
+    def __init__(self, classroom_design, coefs=[0.25, 0.25, 0.25, 0.25],
+                 sociability_sequence=None, degree_sequence=None, seed=0,
+                 seat_fraction=0.5, deterministic_choice=True):
 
         self.rand = np.random.RandomState(seed)
         self.classroom = classroom_design
@@ -391,7 +393,8 @@ class ClassroomModel():
             self.social_network = network.erdos_renyi(self.max_num_agents, 0.2)[0]
         else:
             self.max_num_agents = len(degree_sequence)
-            self.social_network = network.walts_graph(self.rand.shuffle(degree_sequence), plot=False)[0]
+            self.rand.shuffle(degree_sequence)
+            self.social_network = network.walts_graph(degree_sequence, plot=False)[0]
 
         if sociability_sequence is None:
             # default sociability values are sampled uniformly from [0,1]
@@ -399,7 +402,8 @@ class ClassroomModel():
             self.sociability_range = (min(self.sociability_sequence),max(self.sociability_sequence))
         else:
             if len(sociability_sequence) == self.max_num_agents:
-                self.sociability_sequence = deque(self.rand.shuffle(sociability_sequence))
+                self.rand.shuffle(sociability_sequence)
+                self.sociability_sequence = deque(sociability_sequence)
                 self.sociability_range = (min(self.sociability_sequence),max(self.sociability_sequence))
             else:
                 raise ValueError("'sociability_sequence' and 'degree_sequence' must have same length")
@@ -469,23 +473,27 @@ class ClassroomModel():
         model_state: binary matrix where each entry refers to a seat's state
     """
     def get_binary_model_state(self):
-
         model_state = np.zeros((self.classroom.width, self.classroom.num_rows), dtype=int)
         for seat in self.seats.flat:
             # model_state[student.pos] = 1
-            try:
-                if seat.student:
-                    model_state[seat.pos] = 1
-            except:
-                continue
+            if seat is not None and seat.student:
+                model_state[seat.pos] = 1
+        return self.remove_aisles(model_state).T
 
+    def get_happiness_model_state(self):
+        """Return a matrix of the happiness of each student at each seat."""
+        model_state = np.zeros((self.classroom.width, self.classroom.num_rows))
+        for seat in self.seats.flat:
+            if seat is not None and seat.student:
+                model_state[seat.pos] = seat.get_happiness(seat.student)
+        return self.remove_aisles(model_state).T
+
+    def remove_aisles(self, model_state):
+        """Remove aisles from the given matrix with shape of this model."""
         # remove aisles from the matrix
         model_state = np.delete(model_state, self.classroom.aisles_x, axis=0)
         model_state = np.delete(model_state, self.classroom.aisles_y, axis=1)
-
-        return model_state.T
-
-
+        return model_state
 
 
 class ClassroomDesign():
