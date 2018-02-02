@@ -22,9 +22,13 @@ https://www.overleaf.com/13250817fxtnzrkyyrjf
 NOTE: before running any commands: `pip3 install -r requirements.txt`.
 
 `python3 animation.py` to run the interactive model, see interaction commands below.
+
 `python3 data_processing/form_answers.py` to see visualized answers from data collection.
+
 `python3 data_processing/process_form.py` for further visualized information based on the form answers.
+
 `python3 sensitivity_analysis.py --ofat-analysis` to run the OFAT SA visualizations.
+
 `python3 sensitivity_analysis.py --sobol-analysis` to run the Sobol SA visualizations.
 
 ## Model Overview
@@ -92,13 +96,15 @@ In general, use the ClassroomModel() constructor to create a model with the desi
 
 #### Animation of the Simulated Seating Process
 
-First run the following to generate some simulation data.
+First run the below command to generate some simulation data.
 
 ```
     $ python3 run_model.py [file_name]
 ```
-The model states at each time point will be saved to ``animation_data/model_data.json`` or if specified to ``animation_data/file_name``.
-To simulate a customized model instead of the default one, create a ClassroomModel instance with the desired characteristics. Then run the ``generate_data()`` method to generate the data for animation.
+
+The model state at each time point will be saved to `animation_data/model_data.json` or if specified to `animation_data/file_name`. Noting that `[filename]` is an optional argument in the command above, and in the animation below.
+
+Simulating a customized model instead of the default one needs to done programmatically. Create a `ClassroomModel` instance with the desired characteristics. Then run the `generate_data()` method to generate the data for animation command below.
 
 And then you can visualize the seating process of the generated data with:
 
