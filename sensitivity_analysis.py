@@ -319,7 +319,9 @@ def display_ofat_results(results, parameters=PARAMETERS,
 
             err_min = mean_plot_data[:, j] - min_plot_data[:, j]
             err_max = max_plot_data[:, j] - mean_plot_data[:, j]
-            plt.errorbar(np.linspace(*bounds, results.shape[0]), mean_plot_data[:, j], yerr=[err_max, err_min], ls='None', marker='o', ms=4, capsize=3)
+            plt.errorbar(np.linspace(*bounds, results.shape[0]),
+                         mean_plot_data[:, j], yerr=[err_max, err_min],
+                         ls='None', marker='o', ms=4, capsize=3)
 
             plt.title("{} measure for parameter {}".format(comparison_method, param_name))
 
