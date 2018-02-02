@@ -11,10 +11,21 @@ https://www.overleaf.com/13250817fxtnzrkyyrjf
 * ``animation.py`` visualizes the seating process of a simulation (loading the simulation data from ``animation_data``).
 * ``model_comparison.py`` provides methods to analyse and compare model outputs (seating patterns).
 * ``parameter_estimation.py`` implements the estimation of utility coefficients using the SPSA algorithm together with the collected data. Results (used coefficients and the respected errors) are saved to ``model_output/parameter_estimation``
+* `sensitivity-analysis.py` used to analyze the model using OFAT and Sobol techniques, and visualize the analysis.
 * ``social`` provides methods to generate realistic social networks.
 * ``data-collection`` contains the implementation of the online survey.
 * ``data`` contains the results from the online survey conducted during UvA lectures.
 * ``data_processing`` provides methods to process the data collected during UvA lectures.
+
+## A Few Quick Commands
+
+NOTE: before running any commands: `pip3 install -r requirements.txt`.
+
+`python3 animation.py` to run the interactive model, see interaction commands below.
+`python3 data_processing/form_answers.py` to see visualized answers from data collection.
+`python3 data_processing/process_form.py` for further visualized information based on the form answers.
+`python3 sensitivity_analysis.py --ofat-analysis` to run the OFAT SA visualizations.
+`python3 sensitivity_analysis.py --sobol-analysis` to run the Sobol SA visualizations.
 
 ## Model Overview
 
@@ -79,8 +90,6 @@ Each seat object has the following characteristics which may change during a sim
 
 In general, use the ClassroomModel() constructor to create a model with the desired properties. Then the model can be advanced using ``model.step()``. At any step the current seating pattern (``model.get_binary_model_state()``) can be analysed with the tools in ``model_comparison.py``. The complete classroom state (including aisles, utilities, etc.) can be obtained by the ``get_model_state(model)`` method in ``run_model.py``.
 
-
-
 #### Animation of the Simulated Seating Process
 
 First run the following to generate some simulation data.
@@ -96,7 +105,6 @@ And then you can visualize the seating process of the generated data with:
 ```
     $ python3 animation.py [file_name]
 ```
-
 
 During the animation some keys allow you to edit the iteration procedure:
 

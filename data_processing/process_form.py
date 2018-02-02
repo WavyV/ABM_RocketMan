@@ -134,6 +134,7 @@ def seat_location_scores(convolution_iters=10, plot=False):
     if plot:
         plt.imshow(seats)
         plt.colorbar()
+        plt.title("Convolution of students preferred seats")
         plt.show()
     return seats
 

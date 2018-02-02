@@ -1,4 +1,5 @@
 import collections
+import os
 import pickle
 import sys
 
@@ -65,6 +66,9 @@ PARAMETERS = {
     ],
     "_defaults": [1, 1, 1, 1, 120]  # Not used by Sobol, but by OFAT.
 }
+
+# Path to where OFAT and SOBOL results are saved.
+RESULTS_PATH = "./sensitivity-analysis-data"
 
 
 def run(b1, b2, b3, b4, class_size, model_iterations, comparison_methods,
@@ -295,30 +299,36 @@ def display_ofat_results(results, parameters=PARAMETERS,
 
 
 if __name__ == "__main__":
+    ofat_results_path = os.path.join(RESULTS_PATH, OFAT_RESULTS_FILENAME)
+    sobol_results_path = os.path.join(RESULTS_PATH, SOBOL_RESULTS_FILENAME)
+
     if "--ofat-run" in sys.argv:
         print("Starting OFAT run...\n")
         results = run_ofat_analysis()
-        with open(OFAT_RESULTS_FILENAME, "wb") as f:
+        with open(ofat_results_path, "wb") as f:
             pickle.dump(results, f)
-        print("\nSaved results to {}".format(OFAT_RESULTS_FILENAME))
+        print("\nSaved results to {}".format(ofat_results_path))
 
     elif "--ofat-analysis" in sys.argv:
         print("Starting OFAT analysis...\nLoaded results from {}".format(
-            OFAT_RESULTS_FILENAME))
-        with open(OFAT_RESULTS_FILENAME, "rb") as f:
+            ofat_results_path))
+        with open(ofat_results_path, "rb") as f:
             results = pickle.load(f)
         display_ofat_results(results)
 
     elif "--sobol-run" in sys.argv:
         print("Starting SOBOL run...\n")
         results = run_sobol_analysis()
-        with open(SOBOL_RESULTS_FILENAME, "wb") as f:
+        with open(sobol_results_path, "wb") as f:
             pickle.dump(results, f)
-        print("\nSaved results to {}".format(SOBOL_RESULTS_FILENAME))
+        print("\nSaved results to {}".format(sobol_results_path))
 
     elif "--sobol-analysis" in sys.argv:
         print("Starting SOBOL analysis...\nLoaded results from {}".format(
-            SOBOL_RESULTS_FILENAME))
-        with open(SOBOL_RESULTS_FILENAME, "rb") as f:
+            sobol_results_path))
+        with open(sobol_results_path, "rb") as f:
             results = pickle.load(f)
         display_sobol_results(results)
+
+    else:
+        print("Invalid flag")
