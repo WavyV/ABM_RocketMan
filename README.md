@@ -22,9 +22,13 @@ https://www.overleaf.com/13250817fxtnzrkyyrjf
 NOTE: before running any commands: `pip3 install -r requirements.txt`.
 
 `python3 animation.py` to run the interactive model, see interaction commands below.
+
 `python3 data_processing/form_answers.py` to see visualized answers from data collection.
+
 `python3 data_processing/process_form.py` for further visualized information based on the form answers.
+
 `python3 sensitivity_analysis.py --ofat-analysis` to run the OFAT SA visualizations.
+
 `python3 sensitivity_analysis.py --sobol-analysis` to run the Sobol SA visualizations.
 
 ## Model Overview
