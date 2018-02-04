@@ -54,6 +54,24 @@ def get_default_pos_utility_bins():
         print(pos_utilities)
         return pos_utilities
 
+def get_block_pos_utilities():
+
+    # Assumes classroom to be default shape
+    seating_bins = np.ones((14, 22))
+
+    # first three rows very undisirable
+    seating_bins[0:3, 7:] *= 0.05
+    seating_bins[0:3, 0:7] *= 0.0
+
+    # back five rows somewhat desirable
+    seating_bins[-5:, 7:] *= 0.5
+    seating_bins[-5:, 0:7] *= 0.2
+
+    # middle section to the left also quite desirable
+    seating_bins[3:-5, 0:7] *= 0.7
+
+    return seating_bins.T
+
 def get_default_sociability_sequence(class_size):
 
     file_path = path.join(MODEL_INPUT_PATH, "size_" + str(class_size) + DEFAULT_SOC_SEQ)
@@ -104,7 +122,10 @@ def init_default_model(coefs, class_size, seed=0, seat_fraction=0.5,
     #classroom = ClassroomDesign(pos_utilities=get_default_pos_utilities())
 
     """ run the following to use bins of pos_utilities """
-    classroom = ClassroomDesign(pos_utilities=get_default_pos_utility_bins())
+    # classroom = ClassroomDesign(pos_utilities=get_default_pos_utility_bins())
+
+    """ run the following to use custom bins of pos_utilities """
+    classroom = ClassroomDesign(pos_utilities=get_block_pos_utilities())
 
     # The degree sequence for the social network is sampled from the observed
     # distribution of number of friends
