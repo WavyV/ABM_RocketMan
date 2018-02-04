@@ -26,45 +26,54 @@ For OFAT analysis generate the data and analyze it separately:
 For Sobol analysis generate the data and analyze it separately:
     python3 sensitivity_analysis.py --sobol-run
     python3 sensitivity_analysis.py --sobol-analysis
+
+NOTE: Between a run and analysis the parameters below should remain unchanged.
 """
 
 
 # OFAT parameters
 RUNS_PER_SAMPLE = 10  # Amount of replicates per run.
-SAMPLES_PER_PARAM = 10  # Points on the interval per parameter.
+SAMPLES_PER_PARAM = 15  # Points on the interval per parameter.
 OFAT_RESULTS_FILENAME = "_ofat-runs-{}-samples-{}.pickle".format(
     RUNS_PER_SAMPLE, SAMPLES_PER_PARAM)
 
 # Sobol parameters
 SOBOL_SAMPLES = 1000  # Total Saltelli samples: `SOBOL_SAMPLES` * 12
-SOBOL_RESULTS_FILENAME = "_sobol-samples-{}.pickle".format(SOBOL_SAMPLES)
-MAX_SOBOL_THREADS = 4
+SOBOL_REPLICATES = 3  # Replicates per each Sobol sample.
+SOBOL_RESULTS_FILENAME = "_sobol-samples-{}-replicates-{}.pickle".format(
+    SOBOL_SAMPLES, SOBOL_REPLICATES)
 
 # The output measures used to analyze the final state of a model.
 # Each function takes a model (in end state) as first and only argument.
 COMPARISONS = collections.OrderedDict({
     # "happiness": lambda m: sum(sum(m.get_happiness_model_state())),
-    "clusters": lambda m: sum(
-        model_comparison.count_clusters(m.get_binary_model_state(), m.classroom.aisles_x)),
-    "entropy": lambda m: sum(
-        model_comparison.get_entropy(m.get_binary_model_state()))
+
+    "homogeneity": lambda m: model_comparison.get_characteristic_value(
+        m.get_binary_model_state()),
+
+    "correlation": lambda m: model_comparison.get_characteristic_value(
+        m.get_binary_model_state(), method="correlation"),
+
+    "rl_nonuniformity": lambda m: model_comparison.get_characteristic_value(
+        m.get_binary_model_state(), method="rl_nonuniformity"),
+
+    "rl_long_run_emphasis": lambda m: model_comparison.get_characteristic_value(
+        m.get_binary_model_state(), method="rl_long_run_emphasis")
 })
 
 # Iterations to run each model for.
-MODEL_ITERATIONS = 150
+MODEL_ITERATIONS = 240
 
 # Parameters in the funky format that SALib expects.
 # These parameters are used by both OFAT and Sobol.
 PARAMETERS = {
-    "names": ["b1", "b2", "b3", "b4",
-    # "class_size"
-    ],
+    "names": ["b1", "b2", "b3", "b4", "class_size"],
     "bounds": [
         [0, 1],
         [0, 1],
         [0, 1],
         [0, 1],
-        # [1, 240],
+        [1, 240],
     ],
     "_defaults": [1, 1, 1, 1, 120]  # Not used by Sobol, but by OFAT.
 }
@@ -106,6 +115,7 @@ def run(b1, b2, b3, b4, class_size, model_iterations, comparison_methods,
 def run_sobol_analysis(parameters=PARAMETERS, num_samples=SOBOL_SAMPLES,
                        model_iterations=MODEL_ITERATIONS,
                        comparison_methods=COMPARISONS,
+                       sobol_replicates=SOBOL_REPLICATES,
                        fixed_class_size=None):
     """Run, print and save sensitivity analysis.
 
@@ -114,12 +124,15 @@ def run_sobol_analysis(parameters=PARAMETERS, num_samples=SOBOL_SAMPLES,
         num_samples: int, amount of samples, as per the argument to salib.
         model_iterations: int, amount of iterations to run each model.
         comparison_methods: dict of string to comparison function.
+        sobol_replicates: int, replicates per each sample (averaged).
         fixed_class_size: int, fix class size to given number (note that in
             this case class size must not be in the given parameters)
     """
     parameters["num_vars"] = len(parameters["names"])
     samples = saltelli.sample(parameters, num_samples)
-    print("\nTotal runs: {}".format(samples.shape[0]))
+    print("\nSamples: {} x replicates: {} = total: {}".format(
+        samples.shape[0], sobol_replicates,
+        samples.shape[0] * sobol_replicates))
 
     def get_sample_measures(sample):
         """Return output measures for the given sample."""
@@ -130,13 +143,19 @@ def run_sobol_analysis(parameters=PARAMETERS, num_samples=SOBOL_SAMPLES,
 
     # Calculate measures for each sample and append to this results array.
     results = []
-    run_count = 0
-    for measures, sample_params in (
-            zip(map(get_sample_measures, samples), samples)):
-        print("\nRun: {}\nparameters: {}\nmeasures: {}\nfixed class size: {}".format(
-                run_count, sample_params, measures, fixed_class_size))
-        run_count += 1
-        results.append(measures)
+    sample_count = 0
+    for sample_params in samples:
+
+        # Run `sobol_replicates` replicates and take the mean of each measure.
+        replicate_measures = []
+        for _ in range(sobol_replicates):
+            replicate_measures.append(get_sample_measures(sample_params))
+        sample_measures = [np.mean(x) for x in np.array(replicate_measures).T]
+
+        print("\nSample: {}\nparameters: {}\nmeasures: {}\nfixed class size: {}".format(
+                sample_count, sample_params, sample_measures, fixed_class_size))
+        results.append(sample_measures)
+        sample_count += 1
 
     return results
 
@@ -158,16 +177,25 @@ def display_sobol_results(results, parameters=PARAMETERS,
         sensitivity = sobol.analyze(
             parameters, np.array(list(map(lambda x: x[i], results))))
         pprint(sensitivity)
-        _, (ax1, ax2) = plt.subplots(1, 2)
-        for key, ax, order in zip(["S1", "ST"], [ax1, ax2], ["first", "total"]):
+
+        for key, order in zip(["S1", "ST"], ["first", "total"]):
+            ax = plt.gca()
             ax.set_yticks(range(num_params))
             ax.set_yticklabels(parameters["names"])
-            ax.errorbar(sensitivity[key],
-                        range(num_params),
-                        xerr=sensitivity["{}_conf".format(key)],
-                        fmt="o")
-            ax.set_title("{} order sensitivity".format(order))
-        plt.show()
+            plt.title("{} order sensitivity of {}".format(
+                order, comparison_method))
+            ax.set_xlim([-0.1, 1.1])
+            plt.errorbar(sensitivity[key],
+                         range(num_params),
+                         xerr=sensitivity["{}_conf".format(key)],
+                         fmt="o",
+                         capsize=4)
+
+            plt.savefig(os.path.join(
+                RESULTS_PATH,
+                "sobol-measure-{}-samples-{}-order-{}-replicates-{}.png".format(
+                    comparison_method, SOBOL_SAMPLES, order, SOBOL_REPLICATES)))
+            plt.show()
 
 
 def run_ofat_analysis(parameters=PARAMETERS,
@@ -196,11 +224,12 @@ def run_ofat_analysis(parameters=PARAMETERS,
 
     """
     # Set up before the run, including results matrix.
+    num_points = 4  # min, max, mean , variance
     results = np.empty(
         (samples_per_param,
          len(parameters["names"]),
          len(comparison_methods),
-         3))
+         num_points))
     default_params = parameters["_defaults"]
     run_count = 0
 
@@ -235,16 +264,18 @@ def run_ofat_analysis(parameters=PARAMETERS,
                     run_count, sample_params, measures))
 
             # Set the element E (see function docstring) in results matrix.
-            E = np.empty((len(comparison_methods), 3))
+            E = np.empty((len(comparison_methods), num_points))
             # TODO: Why is this axis=0 and not axis=1 :s ? But it works so..
             mean = np.array(sample_measures).mean(axis=0)
             min_ = np.array(sample_measures).min(axis=0)
             max_ = np.array(sample_measures).max(axis=0)
+            var = np.array(sample_measures).var(axis=0)
             print("min: {}".format(min_))
             print("mean: {}".format(mean))
             print("max: {}".format(max_))
+            print("var: {}".format(var))
             for k in range(len(comparison_methods)):
-                E[k] = [min_[k], max_[k], mean[k]]
+                E[k] = [min_[k], max_[k], mean[k], var[k]]
             results[i][j] = E
     return results
 
@@ -283,20 +314,36 @@ def display_ofat_results(results, parameters=PARAMETERS,
         min_plot_data = ofat_single_comparison_results(results, k, 0)
         max_plot_data = ofat_single_comparison_results(results, k, 1)
         mean_plot_data = ofat_single_comparison_results(results, k, 2)
+        var_plot_data = ofat_single_comparison_results(results, k, 3)
 
         for j, param_name in enumerate(parameters["names"]):
             bounds = parameters["bounds"][j]
+            print("variance: {} measure, parameter {}:\n\t{}".format(
+                comparison_method, param_name, var_plot_data[:, j]))
 
-            for label, plot_data in zip(
-                    ["min", "max", "mean"],
-                    [min_plot_data, max_plot_data, mean_plot_data]):
-                plt.scatter(np.linspace(*bounds, results.shape[0]),
-                            plot_data[:, j],
-                            label=label)
-                plt.title("{} measure for parameter {}".format(
-                    comparison_method, param_name))
+            # for label, plot_data in zip(
+            #         ["min", "max", "mean"],
+            #         [min_plot_data, max_plot_data, mean_plot_data]):
+            #     plt.scatter(np.linspace(*bounds, results.shape[0]),
+            #                 plot_data[:, j],
+            #                 label=label)
+            #     plt.title("{} measure for parameter {}".format(
+            #         comparison_method, param_name))
 
-            plt.legend()
+            err_min = mean_plot_data[:, j] - min_plot_data[:, j]
+            err_max = max_plot_data[:, j] - mean_plot_data[:, j]
+            plt.errorbar(np.linspace(*bounds, results.shape[0]),
+                         mean_plot_data[:, j], yerr=[err_max, err_min],
+                         ls='None', marker='o', ms=4, capsize=3)
+
+            plt.title("{} measure for parameter {}".format(comparison_method, param_name))
+
+            # plt.legend()
+            plt.savefig(os.path.join(
+                RESULTS_PATH,
+                "ofat-measure-{}-parameter-{}-samples-{}-replicates-{}.png".format(
+                    comparison_method, param_name, SAMPLES_PER_PARAM,
+                    RUNS_PER_SAMPLE)))
             plt.show()
 
 
