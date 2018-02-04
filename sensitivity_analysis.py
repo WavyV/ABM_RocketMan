@@ -39,7 +39,9 @@ OFAT_RESULTS_FILENAME = "_ofat-runs-{}-samples-{}.pickle".format(
 
 # Sobol parameters
 SOBOL_SAMPLES = 1000  # Total Saltelli samples: `SOBOL_SAMPLES` * 12
-SOBOL_RESULTS_FILENAME = "_sobol-samples-{}.pickle".format(SOBOL_SAMPLES)
+SOBOL_REPLICATES = 3  # Replicates per each Sobol sample.
+SOBOL_RESULTS_FILENAME = "_sobol-samples-{}-replicates-{}.pickle".format(
+    SOBOL_SAMPLES, SOBOL_REPLICATES)
 
 # The output measures used to analyze the final state of a model.
 # Each function takes a model (in end state) as first and only argument.
@@ -113,6 +115,7 @@ def run(b1, b2, b3, b4, class_size, model_iterations, comparison_methods,
 def run_sobol_analysis(parameters=PARAMETERS, num_samples=SOBOL_SAMPLES,
                        model_iterations=MODEL_ITERATIONS,
                        comparison_methods=COMPARISONS,
+                       sobol_replicates=SOBOL_REPLICATES,
                        fixed_class_size=None):
     """Run, print and save sensitivity analysis.
 
@@ -121,12 +124,15 @@ def run_sobol_analysis(parameters=PARAMETERS, num_samples=SOBOL_SAMPLES,
         num_samples: int, amount of samples, as per the argument to salib.
         model_iterations: int, amount of iterations to run each model.
         comparison_methods: dict of string to comparison function.
+        sobol_replicates: int, replicates per each sample (averaged).
         fixed_class_size: int, fix class size to given number (note that in
             this case class size must not be in the given parameters)
     """
     parameters["num_vars"] = len(parameters["names"])
     samples = saltelli.sample(parameters, num_samples)
-    print("\nTotal runs: {}".format(samples.shape[0]))
+    print("\nSamples: {} x replicates: {} = total: {}".format(
+        samples.shape[0], sobol_replicates,
+        samples.shape[0] * sobol_replicates))
 
     def get_sample_measures(sample):
         """Return output measures for the given sample."""
@@ -137,13 +143,19 @@ def run_sobol_analysis(parameters=PARAMETERS, num_samples=SOBOL_SAMPLES,
 
     # Calculate measures for each sample and append to this results array.
     results = []
-    run_count = 0
-    for measures, sample_params in (
-            zip(map(get_sample_measures, samples), samples)):
-        print("\nRun: {}\nparameters: {}\nmeasures: {}\nfixed class size: {}".format(
-                run_count, sample_params, measures, fixed_class_size))
-        run_count += 1
-        results.append(measures)
+    sample_count = 0
+    for sample_params in samples:
+
+        # Run `sobol_replicates` replicates and take the mean of each measure.
+        replicate_measures = []
+        for _ in range(sobol_replicates):
+            replicate_measures.append(get_sample_measures(sample_params))
+        sample_measures = [np.mean(x) for x in np.array(replicate_measures).T]
+
+        print("\nSample: {}\nparameters: {}\nmeasures: {}\nfixed class size: {}".format(
+                sample_count, sample_params, sample_measures, fixed_class_size))
+        results.append(sample_measures)
+        sample_count += 1
 
     return results
 
@@ -170,8 +182,9 @@ def display_sobol_results(results, parameters=PARAMETERS,
             ax = plt.gca()
             ax.set_yticks(range(num_params))
             ax.set_yticklabels(parameters["names"])
-            ax.set_title("{} order sensitivity".format(order))
-            ax.set_xlim([-0.05, 0.9])
+            plt.title("{} order sensitivity of {}".format(
+                order, comparison_method))
+            ax.set_xlim([-0.1, 1.1])
             plt.errorbar(sensitivity[key],
                          range(num_params),
                          xerr=sensitivity["{}_conf".format(key)],
@@ -180,8 +193,8 @@ def display_sobol_results(results, parameters=PARAMETERS,
 
             plt.savefig(os.path.join(
                 RESULTS_PATH,
-                "sobol-measure-{}-samples-{}-order-{}.png".format(
-                    comparison_method, SOBOL_SAMPLES, order)))
+                "sobol-measure-{}-samples-{}-order-{}-replicates-{}.png".format(
+                    comparison_method, SOBOL_SAMPLES, order, SOBOL_REPLICATES)))
             plt.show()
 
 
