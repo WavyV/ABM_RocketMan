@@ -8,6 +8,7 @@ MODEL_DATA_PATH = "animation_data"
 FILE_NAME = "model_data.json"
 NUM_ITERATIONS = 150
 CLASS_SIZE = 150
+# position + friendship + sociability + accessability
 MODEL_COEFS = [[0.1,0,0,1], [0.1,0,1,1], [0.1,1,1,1]]
 BINS = [0, 0.1, 0.5]
 
