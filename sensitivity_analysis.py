@@ -67,7 +67,8 @@ MODEL_ITERATIONS = 240
 # Parameters in the funky format that SALib expects.
 # These parameters are used by both OFAT and Sobol.
 PARAMETERS = {
-    "names": ["b1", "b2", "b3", "b4", "class_size"],
+    # position, friendship, sociability, accessibility
+    "names": ["β3", "β1", "β2", "β4", "class_size"],
     "bounds": [
         [0, 1],
         [0, 1],
@@ -75,7 +76,8 @@ PARAMETERS = {
         [0, 1],
         [1, 240],
     ],
-    "_defaults": [1, 1, 1, 1, 120]  # Not used by Sobol, but by OFAT.
+    # Not used by Sobol, but by OFAT.
+    "_defaults": [0.25, 0.25, 0.25, 0.25, 120]
 }
 
 # Path to where OFAT and SOBOL results are saved.
@@ -336,7 +338,8 @@ def display_ofat_results(results, parameters=PARAMETERS,
                          mean_plot_data[:, j], yerr=[err_max, err_min],
                          ls='None', marker='o', ms=4, capsize=3)
 
-            plt.title("{} measure for parameter {}".format(comparison_method, param_name))
+            plt.title("{} for parameter {}".format(
+                comparison_method.title().replace("_", " "), param_name))
 
             # plt.legend()
             plt.savefig(os.path.join(
@@ -344,6 +347,7 @@ def display_ofat_results(results, parameters=PARAMETERS,
                 "ofat-measure-{}-parameter-{}-samples-{}-replicates-{}.png".format(
                     comparison_method, param_name, SAMPLES_PER_PARAM,
                     RUNS_PER_SAMPLE)))
+            plt.axvline(x=parameters["_defaults"][j], c="black", ls="dotted")
             plt.show()
 
 
