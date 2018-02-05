@@ -67,15 +67,17 @@ MODEL_ITERATIONS = 240
 # Parameters in the funky format that SALib expects.
 # These parameters are used by both OFAT and Sobol.
 PARAMETERS = {
+    # position, friendship, sociability, accessibility
     "names": ["b1", "b2", "b3", "b4", "class_size"],
     "bounds": [
         [0, 1],
         [0, 1],
-        [0, 1],
+        [-1, 1],
         [0, 1],
         [1, 240],
     ],
-    "_defaults": [1, 1, 1, 1, 120]  # Not used by Sobol, but by OFAT.
+    # Not used by Sobol, but by OFAT.
+    "_defaults": [0.25, 0.25, 0.25, 0.25, 120]
 }
 
 # Path to where OFAT and SOBOL results are saved.
