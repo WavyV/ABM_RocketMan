@@ -347,6 +347,7 @@ def display_ofat_results(results, parameters=PARAMETERS,
                 "ofat-measure-{}-parameter-{}-samples-{}-replicates-{}.png".format(
                     comparison_method, param_name, SAMPLES_PER_PARAM,
                     RUNS_PER_SAMPLE)))
+            plt.axvline(x=parameters["_defaults"][j], c="black", ls="dotted")
             plt.show()
 
 
