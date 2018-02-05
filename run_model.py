@@ -9,7 +9,7 @@ FILE_NAME = "model_data.json"
 NUM_ITERATIONS = 150
 CLASS_SIZE = 150
 # position + friendship + sociability + accessability
-MODEL_COEFS = [[0.1,0,0,1], [0.1,0,1,1], [0.1,1,1,1]]
+MODEL_COEFS = [[0,0,0,1], [0,0,1,0], [0,1,0,1]]
 BINS = [0, 0.1, 0.5]
 
 MODEL_INPUT_PATH = "model_input"
@@ -86,6 +86,19 @@ def get_default_sociability_sequence(class_size):
             pickle.dump(sociability_sequence, f)
         return sociability_sequence
 
+def generate_sociability_sequence(class_size, distribution, seed=0):
+
+    np.random.seed(seed)
+
+    if distribution == "cauchy":
+        sociability_sequence = np.random.standard_cauchy(size=class_size)
+    if distribution == "gaussian":
+        sociability_sequence = np.random.normal(size=class_size)
+    else:
+        sociability_sequence = np.random.uniform(-1,1, size=class_size)
+
+    return sociability_sequence
+
 def get_default_degree_sequence(class_size):
 
     file_path = path.join(MODEL_INPUT_PATH, "size_" + str(class_size) + DEFAULT_DEG_SEQ)
@@ -109,12 +122,16 @@ Args:
     class_size: number of students in the class, forming the social network
     seed: for random number generation
     seat_fraction: fraction of available seats to be considered for seat choice
+    deterministic_choice: if True, students always choose one of the seats with highest total utility.
+                        Otherwise, the decision is made probabilisticly, converting seat utilities into probabilities.
+    social_aversion: if True, an artificial sociability sequence is generated that includes negative sociability values representing social aversion.
+                        Otherwise, the sociability sequence derived from the data is used, where sociability values only range from 0 to 1.
 
 Returns:
     model: the created model instance
 """
 def init_default_model(coefs, class_size, seed=0, seat_fraction=0.5,
-                       deterministic_choice=True):
+                       deterministic_choice=True, social_aversion=False):
 
     # Using the default classroom size of [6,14,0] blocks and 14 rows
 
@@ -131,8 +148,23 @@ def init_default_model(coefs, class_size, seed=0, seat_fraction=0.5,
     # distribution of number of friends
     degree_sequence = get_default_degree_sequence(class_size)
 
-    # The sociability sequence is sampled from the observed distribution
-    sociability_sequence = get_default_sociability_sequence(class_size)
+    if social_aversion:
+        # The sociability sequence is sampled randomly from a distribution, including negative values
+        """ use the following line to sample from a gaussian distribution"""
+        #sociability_sequence = generate_sociability_sequence(class_size, "gaussian", seed)
+
+        """ use the following line to sample from a cauchy distribution"""
+        sociability_sequence = generate_sociability_sequence(class_size, "cauchy", seed)
+
+        """ use the following line to sample from a uniform distribution"""
+        #sociability_sequence = generate_sociability_sequence(class_size, "uniform", seed)
+
+        # scale to range [-1,1]
+        sociability_sequence = (((sociability_sequence - np.min(sociability_sequence)) * 2) / (np.max(sociability_sequence - np.min(sociability_sequence)))) - 1
+
+    else:
+        # The sociability sequence is based on the distribution observed in the collected data
+        sociability_sequence = get_default_sociability_sequence(class_size)
 
     # create the model
     model = ClassroomModel(classroom, coefs,
@@ -248,7 +280,7 @@ if __name__ == "__main__":
         #models.append(init_default_model(coefs, CLASS_SIZE, seat_fraction=0.1, deterministic_choice=False))
 
         """ use the following to simulate the model with deterministic choice of the highest rated seat """
-        models.append(init_default_model(coefs, CLASS_SIZE, deterministic_choice=True))
+        models.append(init_default_model(coefs, CLASS_SIZE, deterministic_choice=True, social_aversion=True))
 
     try:
         generate_data(models, NUM_ITERATIONS, path.join(MODEL_DATA_PATH, sys.argv[1]))
