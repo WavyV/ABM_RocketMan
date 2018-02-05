@@ -38,8 +38,8 @@ OFAT_RESULTS_FILENAME = "_ofat-runs-{}-samples-{}.pickle".format(
     RUNS_PER_SAMPLE, SAMPLES_PER_PARAM)
 
 # Sobol parameters
-SOBOL_SAMPLES = 1000  # Total Saltelli samples: `SOBOL_SAMPLES` * 12
-SOBOL_REPLICATES = 3  # Replicates per each Sobol sample.
+SOBOL_SAMPLES = 2000  # Total Saltelli samples: `SOBOL_SAMPLES` * 12
+SOBOL_REPLICATES = 1  # Replicates per each Sobol sample.
 SOBOL_RESULTS_FILENAME = "_sobol-samples-{}-replicates-{}.pickle".format(
     SOBOL_SAMPLES, SOBOL_REPLICATES)
 
