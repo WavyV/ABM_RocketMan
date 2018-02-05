@@ -9,6 +9,7 @@ from noisyopt import minimizeSPSA
 import time
 from os import path
 import json
+import sys
 
 MODEL_DATA_PATH = "model_output/parameter_estimation"
 FILE_NAME = time.strftime("%Y%m%d-%H%M%S") + ".json"
@@ -64,7 +65,7 @@ def objective_function(coefs, num_repetitions, method):
     print("mean error = {:.4f}".format(mean_error))
 
     # save the results
-    RESULTS_JSON.append({"coefs":coefs, "errors":errors})
+    RESULTS_JSON.append({"coefs":coefs, "errors":errors, "mean_error":mean_error})
 
     return mean_error
 
@@ -73,9 +74,17 @@ def objective_function(coefs, num_repetitions, method):
 Save the results from repeated simulation with given coefficients as a json file_name.
 All results collected from one parameter estimation process are included into the same file.
 """
-def save_json():
+def save_json(folder):
 
-    with open(path.join(MODEL_DATA_PATH, FILE_NAME), mode='w', encoding='utf-8') as f:
+    with open(path.join(MODEL_DATA_PATH, folder, FILE_NAME), mode='w', encoding='utf-8') as f:
+        json.dump(RESULTS_JSON, f)
+
+"""
+Load the results from parameter estimation from the given folder.
+"""
+def save_json(folder):
+
+    with open(path.join(MODEL_DATA_PATH, folder, FILE_NAME), mode='w', encoding='utf-8') as f:
         json.dump(RESULTS_JSON, f)
 
 
@@ -104,19 +113,33 @@ if __name__ == "__main__":
     """
     run the parameter estimation
     """
+    if sys.argv[1] == "run":
+        for method in ['entropy', 'lbp', 'cluster']:
+            #method = 'entropy' # the method used for comparison. One of {'lbp', 'cluster', 'entropy'}
+            num_repetitions = 10 # number of runs with different random seeds per parameter combination and per dataset
+            bounds = [[0.0, 1.0], [0.0, 1.0], [0.0, 1.0], [0.0, 1.0]] # bounds for the parameters to be estimated
+            x0 = np.array([0.25, 0.25, 0.25, 0.25]) # initial guess for parameters
 
-    method = 'entropy' # the method used for comparison. One of {'lbp', 'cluster', 'entropy'}
-    num_repetitions = 10 # number of runs with different random seeds per parameter combination and per dataset
-    bounds = [[0.0, 1.0], [0.0, 1.0], [0.0, 1.0], [0.0, 1.0]] # bounds for the parameters to be estimated
-    x0 = np.array([0.25, 0.25, 0.25, 0.25]) # initial guess for parameters
 
+            # simultaneous perturbation stochastic approximation algorithm
+            # TODO: play with 'a'-values and 'niter' to get good results
+            result = minimizeSPSA(objective_function, x0,
+                    args=(num_repetitions, method),
+                    bounds=bounds, niter=100, paired=False)
 
-    # simultaneous perturbation stochastic approximation algorithm
-    # TODO: play with 'a'-values and 'niter' to get good results
-    result = minimizeSPSA(objective_function, x0,
-            args=(num_repetitions, method),
-            bounds=bounds, niter=10, a=0.1, paired=False)
+            save_json(method)
 
-    save_json()
+            print(result)
 
-    print(result)
+    if sys.argv[1] == "load":
+        file_path = sys.argv[2]
+        with open(path.join(MODEL_DATA_PATH, file_path), mode='r', encoding='utf-8') as f:
+            content = json.load(f)
+
+        mean_errors = [c.get("mean_error") for c in content]
+        coefs = [c.get("coefs") for c in content]
+        idx_sorted = np.argsort(mean_errors)
+        top10_coefs = np.array(mean_errors)[idx_sorted][:10]
+        top10_mean_errors = np.array(coefs)[idx_sorted][:10]
+        for e,c in zip(top10_coefs, top10_mean_errors):
+            print("coefs: {}, \t mean error: {}".format(c,e))
