@@ -68,7 +68,7 @@ MODEL_ITERATIONS = 240
 # These parameters are used by both OFAT and Sobol.
 PARAMETERS = {
     # position, friendship, sociability, accessibility
-    "names": ["b1", "b2", "b3", "b4", "class_size"],
+    "names": ["β3", "β1", "β2", "β4", "class_size"],
     "bounds": [
         [0, 1],
         [0, 1],
@@ -338,7 +338,8 @@ def display_ofat_results(results, parameters=PARAMETERS,
                          mean_plot_data[:, j], yerr=[err_max, err_min],
                          ls='None', marker='o', ms=4, capsize=3)
 
-            plt.title("{} measure for parameter {}".format(comparison_method, param_name))
+            plt.title("{} for parameter {}".format(
+                comparison_method.title().replace("_", " "), param_name))
 
             # plt.legend()
             plt.savefig(os.path.join(
