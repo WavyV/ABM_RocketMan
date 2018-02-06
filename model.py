@@ -1,5 +1,7 @@
 from collections import deque
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.text import OffsetFrom
 from social import network
 
 """
@@ -504,6 +506,89 @@ class ClassroomModel():
         model_state = np.delete(model_state, self.classroom.aisles_y, axis=1)
         return model_state
 
+    """
+    Using matplotlib to draw the current state of the model. Returns the figure
+    """
+    def plot(self, fig, ax, interactive=False):
+        image = -0.8*np.ones((self.classroom.num_rows, self.classroom.width))
+        info = np.zeros((self.classroom.num_rows, self.classroom.width, 4))
+
+        for seat in self.seats.flat:
+            if type(seat) != Seat:
+                continue
+
+            x, y = seat.pos
+
+            info[y,x,0] = self.classroom.pos_utilities[x,y]
+            if seat.student is None:
+                # seat is available. Determine level of accessibility
+                image[y,x] = -2 + seat.accessibility
+            else:
+                # seat is occupied. Set value based on the student's happiness
+                image[y,x] = 1
+                image[y,x] += seat.get_happiness(seat.student)
+
+                # save student's properties
+                info[y,x,1] = seat.student.unique_id
+                info[y,x,2] = seat.student.sociability
+                info[y,x,3] = seat.student.initial_happiness
+
+
+        for pos in self.classroom.entrances:
+            image[pos[1],pos[0]] = -3
+
+        im = ax.imshow(image, vmin=-2, vmax=2, cmap='RdYlGn', interpolation=None)
+        ax.axis('off')
+        ax.set_title('Classroom State ({} students)'.format(len(self.students)))
+
+        helper = ax.annotate("", xy=(0.5, 0), xycoords="axes fraction",
+                             va="bottom", ha="center")
+        offset_from = OffsetFrom(helper, (0.5, 0))
+        a = ax.annotate("seat", xy=(0, 0), xycoords="data", xytext=(0, -10),
+                        textcoords=offset_from, va="top", ha="center",
+                        bbox=dict(boxstyle="round", fc="w"),
+                        arrowprops=dict(arrowstyle="->"), alpha=1)
+        a.set_visible(False)
+
+        def hover(event):
+            if(event.inaxes):
+                x, y = int(np.round(event.xdata)), int(np.round(event.ydata))
+                value = im.get_array()[y][x]
+                seat_utility, student_id, sociability, initial_happiness = (
+                    info[y, x])
+
+                text = ""
+                if value == -0.8:
+                    text = "AISLE"
+                elif value == -3:
+                    text = "DOOR"
+                elif value <= -1:
+                    text = "EMPTY SEAT\nSeat attractivness: {:.2f}\nAccessibility: {:.2f}".format(
+                        seat_utility, value + 2)
+                elif value >= 0:
+                    text = "FILLED SEAT\n {} {:.2f} \n {} {} \n {} {:.2f} \n {} {:.2f}".format(
+                        "Seat attractivness:", seat_utility,
+                        "Student sociability:", int(sociability),
+                        "Initial happiness (t = {}):".format(int(student_id)),
+                        initial_happiness, "Current happiness:", value - 1)
+
+                a.set_text(text)
+                a.xy = (x, y)
+                a.set_visible(True)
+                fig.canvas.draw_idle()
+
+            else:
+                a.set_visible(False)
+                fig.canvas.draw_idle()
+
+        if interactive:
+            cid = fig.canvas.mpl_connect('motion_notify_event', hover)
+
+        fig.tight_layout(rect=[0, 0.2, 1, 1])
+        plt.show()
+
+
+
 
 class ClassroomDesign():
 
@@ -563,6 +648,7 @@ class ClassroomDesign():
             # scale the given attractivity weights to assure values in range [0,1]
             self.pos_utilities = pos_utilities/np.max(pos_utilities)
         else:
+            print("Positional Utilities set to zeros...")
             self.pos_utilities = np.zeros((self.width, num_rows))
 
         # determine the maximal number of seats to be passed in order to get to a seat
