@@ -1,4 +1,5 @@
 import collections
+import copy as c
 import os
 import pickle
 import sys
@@ -68,7 +69,7 @@ MODEL_ITERATIONS = 240
 # These parameters are used by both OFAT and Sobol.
 PARAMETERS = {
     # position, friendship, sociability, accessibility
-    "names": ["β3", "β1", "β2", "β4", "class_size"],
+    "names": ["β3", "β1", "β2", "β4", "N"],
     "bounds": [
         [0, 1],
         [0, 1],
@@ -171,6 +172,19 @@ def display_sobol_results(results, parameters=PARAMETERS,
         parameters: dict, of parameter ranges, see PARAMETERS.
         comparison_methods: dict of string to comparison function.
     """
+
+    def reorder(x):
+        #  Reorder results so coefficients are in correct naming order.
+        new_order = [2, 0, 1, 3, 4]
+        copy = c.deepcopy(x)
+        print("copy: {}".format(copy))
+        for old_i, new_i in enumerate(new_order):
+            print("old i {} new i {}".format(old_i, new_i))
+            x[new_i] = copy[old_i]
+
+    _names = parameters["names"]
+    reorder(_names)
+
     num_params = len(parameters["names"])
     parameters["num_vars"] = num_params
     print("Total samples: {}".format(len(results)))
@@ -183,13 +197,21 @@ def display_sobol_results(results, parameters=PARAMETERS,
         for key, order in zip(["S1", "ST"], ["first", "total"]):
             ax = plt.gca()
             ax.set_yticks(range(num_params))
-            ax.set_yticklabels(parameters["names"])
+
+            #  Reorder results so coefficients are in correct naming order.
+            _sensitivity = sensitivity[key]
+            _conf = sensitivity["{}_conf".format(key)]
+            reorder(_sensitivity)
+            reorder(_conf)
+
+            ax.set_yticklabels(_names)
             plt.title("{} order sensitivity of {}".format(
-                order, comparison_method))
+                order, comparison_method).title().replace("_", " "))
             ax.set_xlim([-0.1, 1.1])
-            plt.errorbar(sensitivity[key],
+
+            plt.errorbar(_sensitivity,
                          range(num_params),
-                         xerr=sensitivity["{}_conf".format(key)],
+                         xerr=_conf,
                          fmt="o",
                          capsize=4)
 
@@ -332,6 +354,8 @@ def display_ofat_results(results, parameters=PARAMETERS,
             #     plt.title("{} measure for parameter {}".format(
             #         comparison_method, param_name))
 
+            # plt.legend()
+
             err_min = mean_plot_data[:, j] - min_plot_data[:, j]
             err_max = max_plot_data[:, j] - mean_plot_data[:, j]
             plt.errorbar(np.linspace(*bounds, results.shape[0]),
@@ -341,7 +365,6 @@ def display_ofat_results(results, parameters=PARAMETERS,
             plt.title("{} for parameter {}".format(
                 comparison_method.title().replace("_", " "), param_name))
 
-            # plt.legend()
             plt.savefig(os.path.join(
                 RESULTS_PATH,
                 "ofat-measure-{}-parameter-{}-samples-{}-replicates-{}.png".format(
