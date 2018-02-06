@@ -10,6 +10,7 @@ import time
 from os import path
 import json
 import sys
+from scipy import stats
 
 MODEL_DATA_PATH = "model_output/parameter_estimation"
 FILE_NAME = time.strftime("%Y%m%d-%H%M%S") + ".json"
@@ -123,7 +124,6 @@ if __name__ == "__main__":
 
 
             # simultaneous perturbation stochastic approximation algorithm
-            # TODO: play with 'a'-values and 'niter' to get good results
             result = minimizeSPSA(objective_function, x0,
                     args=(num_repetitions, method),
                     bounds=bounds, niter=200, paired=False)
@@ -132,15 +132,46 @@ if __name__ == "__main__":
 
             print(result)
 
+    """
+    Load and analyse the results from parameter estimation
+    """
     if sys.argv[1] == "load":
         file_path = sys.argv[2]
         with open(path.join(MODEL_DATA_PATH, file_path), mode='r', encoding='utf-8') as f:
             content = json.load(f)
 
+        errors = [c.get("errors") for c in content]
         mean_errors = [c.get("mean_error") for c in content]
         coefs = [c.get("coefs") for c in content]
+
+        # sort the entries based on increasing mean errors
         idx_sorted = np.argsort(mean_errors)
-        top10_coefs = np.array(mean_errors)[idx_sorted][:10]
-        top10_mean_errors = np.array(coefs)[idx_sorted][:10]
-        for e,c in zip(top10_coefs, top10_mean_errors):
-            print("coefs: {}, \t mean error: {}".format(c,e))
+        coefs_sorted = np.array(coefs)[idx_sorted]
+        mean_errors_sorted = np.array(mean_errors)[idx_sorted]
+        errors_sorted = np.array(errors)[idx_sorted]
+
+        # get the best performing parameter combination
+        top_coefs = errors_sorted[0]
+
+        # perform t-test on the error distributions of the best performing coefficients and all other coefficients
+        p_values = []
+        for other_coefs in errors_sorted:
+             p_values.append(stats.ttest_ind(top_coefs, other_coefs)[1])
+
+
+        # discard all parameter sets that differ significantly from the best performing one
+        top_coefs = []
+        top_mean_errors = []
+        top_errors = []
+        for i in range(len(p_values)):
+            if p_values[i] > 0.1 and np.sum(coefs_sorted[i]) > 0:
+                top_coefs.append(coefs_sorted[i])
+                top_mean_errors.append(mean_errors_sorted[i])
+                top_errors.append(errors_sorted[i])
+                print("coefs: {}, \t mean error: {}".format(coefs_sorted[i], mean_errors_sorted[i]))
+
+        # get some statistics about the remaining successful sets of coefficients
+        print("average best coefs: {}".format(np.mean(top_coefs, axis=0)))
+        print("average error: {}".format(np.mean(top_errors)))
+        print("error variance: {}".format(np.var(top_errors)))
+        print("mean error variance: {}".format(np.var(top_mean_errors)))
