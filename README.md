@@ -31,6 +31,10 @@ NOTE: before running any commands: `pip3 install -r requirements.txt`.
 
 `python3 sensitivity_analysis.py --sobol-analysis` to run the Sobol SA visualizations.
 
+`python3 parameter_estimation.py run` to run the parameter estimation.
+
+`python3 parameter_estimation.py load method/file_name.json [--plot]` to load and analyse the results statistically. Optionally, figures of simulation results with the determined parameter set can be generated and saved to the folder model_output/parameter_estimation/method/. 
+
 ## Model Overview
 
 The Classroom model consists of Seats having a particular attractiveness to each Student. Students are entering the classroom one by one every time step and choose the seat with the highest utility. This process continues until the total number of students in the class is reached or all seats are taken.
