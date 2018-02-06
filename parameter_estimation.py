@@ -115,6 +115,7 @@ if __name__ == "__main__":
     """
     if sys.argv[1] == "run":
         for method in ['entropy', 'lbp', 'cluster']:
+            RESULTS_JSON = []
             #method = 'entropy' # the method used for comparison. One of {'lbp', 'cluster', 'entropy'}
             num_repetitions = 10 # number of runs with different random seeds per parameter combination and per dataset
             bounds = [[0.0, 1.0], [0.0, 1.0], [0.0, 1.0], [0.0, 1.0]] # bounds for the parameters to be estimated
@@ -125,7 +126,7 @@ if __name__ == "__main__":
             # TODO: play with 'a'-values and 'niter' to get good results
             result = minimizeSPSA(objective_function, x0,
                     args=(num_repetitions, method),
-                    bounds=bounds, niter=100, paired=False)
+                    bounds=bounds, niter=200, paired=False)
 
             save_json(method)
 
