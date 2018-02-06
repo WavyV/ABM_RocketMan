@@ -361,6 +361,7 @@ class ClassroomModel():
         classroom_design: instance of ClassroomDesign defining the layout and position-dependent seat utilities of the classroom
         coefs: list [coef_p, coef_f, coef_s, coef_a] defining the coefficients for the position, friendship, sociability and accessibility components in the utility function
         sociability_sequence: list of sociability values per student. Should be sampled from a probability distribution of the students' sociability attribute
+        social_network: the social network to use. Overrides degree_sequence
         degree_sequence: list of friendship degrees per student. Used to create the underlying social network in form of a connectivity matrix (1 means friendship, 0 means indifference).
                 If not given, a random social network (erdos renyi) is created
         seed: seed for the random number generation
@@ -368,7 +369,8 @@ class ClassroomModel():
         deterministic_choice: boolean if students pick deterministically the seat with the highest utility, or if choice is probabilitstic.
     """
     def __init__(self, classroom_design, coefs=[0.25, 0.25, 0.25, 0.25],
-                 sociability_sequence=None, degree_sequence=None, seed=0,
+                 sociability_sequence=None, social_network=None,
+                 degree_sequence=None, seed=0,
                  seat_fraction=0.5, deterministic_choice=True):
 
         self.rand = np.random.RandomState(seed)
@@ -390,14 +392,18 @@ class ClassroomModel():
         # if all utility components are set to zero, seat choices are completely random.
         self.random_seat_choice = np.all(coefs == 0)
 
-        if degree_sequence is None:
-            # create a random network
-            self.max_num_agents = self.classroom.seat_count
-            self.social_network = network.erdos_renyi(self.max_num_agents, 0.2)[0]
+        if social_network is not None:
+            self.social_network = social_network
+            self.max_num_agents = social_network.shape[0]
         else:
-            self.max_num_agents = len(degree_sequence)
-            self.rand.shuffle(degree_sequence)
-            self.social_network = network.walts_graph(degree_sequence, plot=False)[0]
+            if degree_sequence is None:
+                # create a random network
+                self.max_num_agents = self.classroom.seat_count
+                self.social_network = network.erdos_renyi(self.max_num_agents, 0.2)[0]
+            else:
+                self.max_num_agents = len(degree_sequence)
+                self.rand.shuffle(degree_sequence)
+                self.social_network = network.walts_graph(degree_sequence, plot=False)[0]
 
         if sociability_sequence is None:
             # default sociability values are sampled uniformly from [0,1]
