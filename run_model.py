@@ -103,7 +103,7 @@ def generate_sociability_sequence(class_size, distribution, seed=0):
         sociability_sequence = np.random.uniform(-1,1, size=class_size)
     else:
         print("Wrong distribution given! Ending program.")
-        break
+        quit()
 
     return sociability_sequence
 
