@@ -1,34 +1,37 @@
 from collections import deque
 import numpy as np
-import matplotlib.pyplot as plt
+
 from matplotlib.text import OffsetFrom
+
 from social import network
 
 """
-This is the main modeling module, providing classes for
+This is the main modeling module, providing classes for:
     - the general classroom model
     - students
     - seats
     - classroom design
 
 General usage:
-    - initialize the model: m = ClassroomModel(classroom_design, coefs=[0.25,0.25,0.25,0.25], sociability_sequence, degree_sequence, seed=0):
+
+    - initialize the model: m = ClassroomModel(classroom_design,
+      coefs=[0.25,0.25,0.25,0.25], sociability_sequence, degree_sequence,
+      seed=0):
     - run the model for one time step: m.step()
     - get the current seating distribution: output = m.get_binary_model_state()
-
 """
-
 
 
 class Student():
 
-    """
-    Create a student with individual characteristics
+    """Create a student with individual characteristics
 
     Args:
         unique_id: student identifier
-        model: the associated ClassroomModel
-        sociability: willingness to sit next to unknown people (-1: unsociable, 0: indifferent, 1: sociable)
+        model: the associated ClassroomModel sociability: willingness to sit
+            next to unknown people (-1: unsociable,
+        0: indifferent, 1: sociable)
+
     """
     def __init__(self, unique_id, model, sociability=0):
         self.model = model
@@ -44,21 +47,23 @@ class Student():
         self.moving_threshold = 1
         self.moving_prob = 0.05
 
-
-
-    """
-    The seat selection procedure
-
-    Args:
-        seat_pos: predetermined position of the seat to choose. If this parameter is specified utilities are ignored.
-        old_seat: current seat of the student making the seating decision. If this parameter is specified the student is enabled to move to a seat with higher utility than his current one.
-    """
     def choose_seat(self, seat_pos=None, old_seat=None):
+        """The seat selection procedure.
 
+        Args:
+
+            seat_pos: predetermined position of the seat to choose. If this
+                parameter is specified utilities are ignored.
+
+            old_seat: current seat of the student making the seating decision.
+            If this parameter is specified the student is enabled to move to a
+            seat with higher utility than his current one.
+
+        """
         seat_choice = None
 
         if seat_pos is None:
-            # determine all possible seats to choose from
+            # Determine all possible seats to choose from
             seat_options = self.model.empty_seats
 
             if len(seat_options) == 0:
@@ -66,21 +71,27 @@ class Student():
 
             else:
                 if self.model.random_seat_choice:
-                    # pick one randomly
+                    # Pick one randomly
                     seat_choice = self.model.rand.choice(seat_options)
                 else:
                     if old_seat is None:
-                        seat_utilities = [seat.get_total_utility(self) for seat in seat_options]
+                        seat_utilities = [seat.get_total_utility(self)
+                                          for seat in seat_options]
 
                         if self.model.deterministic_choice:
-                            # always choose among the seats with highest utility
-                            seat_choice = self.model.rand.choice(np.array(seat_options)[np.where(seat_utilities == np.max(seat_utilities))])
+                            # Always choose among the seats with highest
+                            # utility
+                            seat_choice = self.model.rand.choice(
+                                np.array(seat_options)[np.where(
+                                    seat_utilities == np.max(seat_utilities))])
 
                         else:
 
-                            # determine the best 'seat_fraction' (e.g. 50%) of all available seats
+                            # Determine the best 'seat_fraction' (e.g. 50%) of
+                            # all available seats
                             seat_subset, utility_subset = [], []
-                            for i in range(int(self.model.seat_fraction * len(seat_options))):
+                            for i in range(int(self.model.seat_fraction
+                                               * len(seat_options))):
                                 index = np.argmax(seat_utilities)
                                 seat_subset.append(seat_options[index])
                                 utility_subset.append(seat_utilities[index])
@@ -88,31 +99,42 @@ class Student():
                             sum_utilities = sum(utility_subset)
 
                             if sum_utilities > 0:
-                            # convert utilities into probabilities and choose seat based on the resulting probability distribution
-                                utility_subset = [s/sum_utilities for s in utility_subset]
-                                seat_choice = self.model.rand.choice(seat_subset, p=utility_subset)
-
+                                # Convert utilities into probabilities and
+                                # choose seat based on the resulting
+                                # probability distribution
+                                utility_subset = [
+                                    s/sum_utilities for s in utility_subset]
+                                seat_choice = self.model.rand.choice(
+                                    seat_subset, p=utility_subset)
                             else:
-                                # if all utilities are zero, choose the seat randomly
-                                seat_choice = self.model.rand.choice(seat_options)
-
+                                # If all utilities are zero, choose the seat
+                                # randomly
+                                seat_choice = self.model.rand.choice(
+                                    seat_options)
+                    # Only used if 'will_to_change_seat' is enabled
                     else:
-                        # only happens if 'will_to_change_seat' is enabled!
+                        # Pick seat with highest utiltiy (if multiple seats are
+                        # optimal, choose one of them randomly) include cost to
+                        # get away from the old seat
+                        seat_utilities = [seat.get_total_utility(self)
+                                          - old_seat.get_stand_up_cost()
+                                          for seat in seat_options]
 
-                        # pick seat with highest utiltiy (if multiple seats are optimal, choose one of them randomly)
-                        # include cost to get away from the old seat
-                        seat_utilities = [seat.get_total_utility(self) - old_seat.get_stand_up_cost() for seat in seat_options]
-
-                        if np.max(seat_utilities) - old_seat.get_total_utility(self) > self.moving_threshold:
-                            # if the difference in utility between the current seat and another available seat exceeds the threshold, move to one of the optimal ones
-                            seat_choice = self.model.rand.choice(np.array(seat_options)[np.where(seat_utilities == np.max(seat_utilities))])
-
+                        if (np.max(seat_utilities)
+                                - old_seat.get_total_utility(self)
+                                > self.moving_threshold):
+                            # If the difference in utility between the current
+                            # seat and another available seat exceeds the
+                            # threshold, move to one of the optimal ones
+                            seat_choice = self.model.rand.choice(
+                                np.array(seat_options)[
+                                    np.where(seat_utilities
+                                             == np.max(seat_utilities))])
         else:
-            # get the seat object at the predetermined position
+            # Get the seat object at the predetermined position
             seat = self.model.seats[seat_pos]
             if seat.student is None:
                 seat_choice = seat
-
 
         if seat_choice is not None:
             # seat has been selected
@@ -133,22 +155,22 @@ class Student():
 
             self.model.empty_seats.remove(seat_choice)
 
-
-    """
-    At each tick the student either selects a seat or stays at its current seat
-    """
     def step(self):
-        # only choose another seat if not seated yet or
-        # if the student has the characteristic to change its seat again
+        """At each tick the student either selects a seat or stays at its current seat.
+
+        """
+        # Only choose another seat if not seated yet or if the student has the
+        # characteristic to change its seat again
         if not self.seated:
             # choose and move to seat
             self.choose_seat()
 
         if self.will_to_change_seat:
-            # with the given probability the student searches for a better seat
+            # With the given probability the student searches for a better seat
             r = self.model.rand.uniform()
             if r < self.moving_prob:
-                # compare current seat utility with all other available seats. If there is a much better one, move
+                # Compare current seat utility with all other available seats.
+                # If there is a much better one, move
                 try:
                     seat = self.model.seats[self.pos]
                     self.choose_seat(seat)
@@ -174,80 +196,85 @@ class Seat():
 
         x, y = pos
 
-        # find the distances to the left and right aisles, for accessibility
+        # Find the distances to the left and right aisles, for accessibility
         if x < model.classroom.aisles_x[0]:
-            # then no aisle to the left
+            # Then no aisle to the left
             self.row_left = None
         else:
             left_aisle = max([a for a in model.classroom.aisles_x if a < x])
             self.row_left = [(i, y) for i in range(left_aisle+1, x)]
 
         if x > model.classroom.aisles_x[-1]:
-            # then no aisle to the right
+            # Then no aisle to the right
             self.row_right = None
         else:
             right_aisle = min([a for a in model.classroom.aisles_x if a > x])
             self.row_right = [(i, y) for i in range(x+1, right_aisle)]
 
-    """
-    Get the position utility of the seat, based on its location in the Classroom
-
-    Returns:
-        pos_utility: utility in range [0,1]
-    """
     def get_position_utility(self):
+        """Get the position utility of the seat, based on its location in the
+        Classroom.
+
+        Returns:
+            pos_utility: utility in range [0,1]
+
+        """
         return self.model.classroom.pos_utilities[self.pos]
 
-    """
-    Get the accessibility of the seat based on the number of Students between the seat and the aisle.
-    The student count for the left and right side are compared and the minimum is used.
-    This number is normalized by the maximal possible number of students to pass (dependent on the classroom design)
-    and then substracted from one in order to obtain values between 0 (number of students to be passed is maximal)
-    and 1 (no students to be passed).
-
-    Returns:
-        u_accessibility: utiltiy in range [0,1]
-    """
     def update_accessibility(self):
+        """Get the accessibility of the seat based on the number of Students between
+        the seat and the aisle.
+
+        The student count for the left and right side are compared and the
+        minimum is used. This number is normalized by the maximal possible
+        number of students to pass (dependent on the classroom design) and then
+        substracted from one in order to obtain values between 0 (number of
+        students to be passed is maximal) and 1 (no students to be passed).
+
+        Returns:
+            u_accessibility: utiltiy in range [0,1]
+
+        """
         x, y = self.pos
 
         count_left, count_right = 0, 0
 
-        if self.row_left != None:
+        if self.row_left is not None:
             for cell in self.row_left:
                 if self.model.seats[cell].student:
                     count_left += 1
         else:
             count_left = np.infty
 
-        if self.row_right != None:
+        if self.row_right is not None:
             for cell in self.row_right:
                 if self.model.seats[cell].student:
                     count_right += 1
         else:
             count_right = np.infty
 
-        self.accessibility = 1 - min(count_right, count_left)/float(self.model.classroom.max_pass)
+        self.accessibility = 1 - min(count_right, count_left)/float(
+            self.model.classroom.max_pass)
 
-
-    """
-    Get the local neighborhood around the Seat
-
-    Args:
-        size_x: width of the neighborhood
-        size_y: height of the neighborhood
-
-    Returns:
-        neighborhood: matrix containing IDs of neighboring students (-1 means empty or no seat at all)
-    """
     def get_neighborhood(self, size_x, size_y):
+        """Get the local neighborhood around the Seat
+
+        Args:
+            size_x: width of the neighborhood
+            size_y: height of the neighborhood
+
+        Returns: neighborhood: matrix containing IDs of neighboring students
+            (-1 means empty or no seat at all)
+
+        """
 
         x, y = self.pos
 
-        # assure that size_x and size_y are odd, so that the neighborhood has one central seat
-        if size_x%2 == 0:
+        # Assure that size_x and size_y are odd, so that the neighborhood has
+        # one central seat
+        if size_x % 2 == 0:
             size_x -= 1
-        if size_y%2 == 0:
+        if size_y % 2 == 0:
             size_y -= 1
 
         neighborhood = -np.ones((size_x, size_y))
