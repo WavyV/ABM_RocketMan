@@ -44,6 +44,7 @@ SOBOL_SAMPLES = 2000  # Total Saltelli samples: `SOBOL_SAMPLES` * 12
 SOBOL_REPLICATES = 1  # Replicates per each Sobol sample.
 SOBOL_RESULTS_FILENAME = "_sobol-samples-{}-replicates-{}.pickle".format(
     SOBOL_SAMPLES, SOBOL_REPLICATES)
+FIXED_N = True
 
 # The output measures used to analyze the final state of a model.
 # Each function takes a model (in end state) as first and only argument.
@@ -184,6 +185,8 @@ def display_sobol_results(results, parameters=PARAMETERS,
 
     _names = parameters["names"]
     reorder(_names)
+    if FIXED_N:
+        _names = _names[:-1]
 
     num_params = len(parameters["names"])
     parameters["num_vars"] = num_params
@@ -203,6 +206,9 @@ def display_sobol_results(results, parameters=PARAMETERS,
             _conf = sensitivity["{}_conf".format(key)]
             reorder(_sensitivity)
             reorder(_conf)
+            if FIXED_N:
+                _sensitivity = _sensitivity[:-1]
+                _conf = _conf[:-1]
 
             ax.set_yticklabels(_names)
             plt.title("{} order sensitivity of {}".format(
@@ -210,7 +216,7 @@ def display_sobol_results(results, parameters=PARAMETERS,
             ax.set_xlim([-0.1, 1.1])
 
             plt.errorbar(_sensitivity,
-                         range(num_params),
+                         range(num_params - 1) if FIXED_N else range(num_params),
                          xerr=_conf,
                          fmt="o",
                          capsize=4)
@@ -365,6 +371,10 @@ def display_ofat_results(results, parameters=PARAMETERS,
 
             err_min = mean_plot_data[:, j] - min_plot_data[:, j]
             err_max = max_plot_data[:, j] - mean_plot_data[:, j]
+            x_axis = np.linspace(*bounds, results.shape[0])
+            y_axis = mean_plot_data[:, j]
+            if param_name == "N":
+                y_axis /= x_axis
             plt.errorbar(np.linspace(*bounds, results.shape[0]),
                          mean_plot_data[:, j], yerr=[err_max, err_min],
                          ls='None', marker='o', ms=4, capsize=3)
