@@ -51,7 +51,8 @@ To deactivate the virtual environment when done, run `deactivate`.
 
 `python3 sensitivity_analysis.py --sobol-analysis` to run the Sobol SA visualizations.
 
-`python3 parameter_estimation.py run` to run the parameter estimation.
+`python3 parameter_estimation.py run <method>` to run the parameter estimation.
+where method must be 'lbp', 'cluster', or 'entropy'.
 
 `python3 parameter_estimation.py load method/file_name.json [--plot]` to load and analyse the results statistically. Optionally, figures of simulation results with the determined parameter set can be generated and saved to the folder model_output/parameter_estimation/method/. 
 
