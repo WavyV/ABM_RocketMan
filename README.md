@@ -5,7 +5,7 @@ An in-depth description of the model's design and analysis can be found in the p
 
 An introductory tutorial on how to use the model can be found in the interactive *Classroom Model Tutorial* jupyter notebook, also found in this repository.
 
-A briew over of the model's code is described below.
+A brief overview of the model's code is described below.
 
 ## Structure
 
