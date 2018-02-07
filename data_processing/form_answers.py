@@ -4,6 +4,8 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
+import time
+
 """
 Function for extracting and plotting data from the questionnaire.
 Functions are in the order they appear in the questionnaire.
@@ -47,6 +49,7 @@ def answers_and_hist(data, question_key, bins="auto", plot=False, title=None,
         plt.hist(answers, bins=bins)
         if title:
             plt.title(title)
+        #plt.savefig(question_key + ".png", bbox_inches='tight')
         plt.show()
     return answers, hist
 
@@ -69,6 +72,7 @@ def get_seats(data, key, plot=False, title=None):
         plt.colorbar()
         if title:
             plt.title(title)
+        plt.savefig(key + ".png", bbox_inches='tight')
         plt.show()
     return room
 

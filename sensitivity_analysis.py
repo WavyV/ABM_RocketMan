@@ -1,4 +1,5 @@
 import collections
+import copy as c
 import os
 import pickle
 import sys
@@ -36,6 +37,7 @@ RUNS_PER_SAMPLE = 10  # Amount of replicates per run.
 SAMPLES_PER_PARAM = 15  # Points on the interval per parameter.
 OFAT_RESULTS_FILENAME = "_ofat-runs-{}-samples-{}.pickle".format(
     RUNS_PER_SAMPLE, SAMPLES_PER_PARAM)
+OFAT_SCALE_COEFS = False
 
 # Sobol parameters
 SOBOL_SAMPLES = 2000  # Total Saltelli samples: `SOBOL_SAMPLES` * 12
@@ -62,22 +64,23 @@ COMPARISONS = collections.OrderedDict({
 })
 
 # Iterations to run each model for.
-MODEL_ITERATIONS = 240
+MAX_STUDENTS = 260
+MODEL_ITERATIONS = MAX_STUDENTS
 
 # Parameters in the funky format that SALib expects.
 # These parameters are used by both OFAT and Sobol.
 PARAMETERS = {
     # position, friendship, sociability, accessibility
-    "names": ["β3", "β1", "β2", "β4", "class_size"],
+    "names": ["β3", "β1", "β2", "β4", "N"],
     "bounds": [
         [0, 1],
         [0, 1],
         [0, 1],
         [0, 1],
-        [1, 240],
+        [1, MAX_STUDENTS],
     ],
     # Not used by Sobol, but by OFAT.
-    "_defaults": [0.25, 0.25, 0.25, 0.25, 120]
+    "_defaults": [0.25, 0.25, 0.25, 0.25, MAX_STUDENTS / 2]
 }
 
 # Path to where OFAT and SOBOL results are saved.
@@ -85,7 +88,7 @@ RESULTS_PATH = "./sensitivity-analysis-data"
 
 
 def run(b1, b2, b3, b4, class_size, model_iterations, comparison_methods,
-        fixed_class_size=None):
+        fixed_class_size=None, scale=True):
     """
     Run the model with given class size and beta coefficients.
     Return a list containing a result for each given comparison method.
@@ -104,7 +107,7 @@ def run(b1, b2, b3, b4, class_size, model_iterations, comparison_methods,
     coefficients = [b1, b2, b3, b4]
 
     # Setup initial model and run it.
-    model = run_model.init_default_model(coefficients, class_size)
+    model = run_model.init_default_model(coefficients, class_size, scale=scale)
     final_model = run_model.final_model(model, model_iterations)
 
     # Collect comparison measures and return them.
@@ -171,6 +174,17 @@ def display_sobol_results(results, parameters=PARAMETERS,
         parameters: dict, of parameter ranges, see PARAMETERS.
         comparison_methods: dict of string to comparison function.
     """
+
+    def reorder(x):
+        #  Reorder results so coefficients are in correct naming order.
+        new_order = [2, 0, 1, 3, 4]
+        copy = c.deepcopy(x)
+        for old_i, new_i in enumerate(new_order):
+            x[new_i] = copy[old_i]
+
+    _names = parameters["names"]
+    reorder(_names)
+
     num_params = len(parameters["names"])
     parameters["num_vars"] = num_params
     print("Total samples: {}".format(len(results)))
@@ -183,13 +197,21 @@ def display_sobol_results(results, parameters=PARAMETERS,
         for key, order in zip(["S1", "ST"], ["first", "total"]):
             ax = plt.gca()
             ax.set_yticks(range(num_params))
-            ax.set_yticklabels(parameters["names"])
+
+            #  Reorder results so coefficients are in correct naming order.
+            _sensitivity = sensitivity[key]
+            _conf = sensitivity["{}_conf".format(key)]
+            reorder(_sensitivity)
+            reorder(_conf)
+
+            ax.set_yticklabels(_names)
             plt.title("{} order sensitivity of {}".format(
-                order, comparison_method))
+                order, comparison_method).title().replace("_", " "))
             ax.set_xlim([-0.1, 1.1])
-            plt.errorbar(sensitivity[key],
+
+            plt.errorbar(_sensitivity,
                          range(num_params),
-                         xerr=sensitivity["{}_conf".format(key)],
+                         xerr=_conf,
                          fmt="o",
                          capsize=4)
 
@@ -259,7 +281,8 @@ def run_ofat_analysis(parameters=PARAMETERS,
                 measures = run(
                     *sample_params,
                     model_iterations=model_iterations,
-                    comparison_methods=comparison_methods)
+                    comparison_methods=comparison_methods,
+                    scale=OFAT_SCALE_COEFS)
                 sample_measures.append(measures)
                 run_count += 1
                 print("\nRun: {}\nparameters: {}\nmeasures: {}".format(
@@ -313,6 +336,12 @@ def display_ofat_results(results, parameters=PARAMETERS,
     """
     for k, comparison_method in enumerate(comparison_methods):
 
+        # Nice comparison method title for the plots.
+        if comparison_method == "rl_long_run_emphasis":
+            comparison_method = "RL: long-run-emphasis"
+        else:
+            comparison_method = comparison_method.title().replace("_", " ")
+
         min_plot_data = ofat_single_comparison_results(results, k, 0)
         max_plot_data = ofat_single_comparison_results(results, k, 1)
         mean_plot_data = ofat_single_comparison_results(results, k, 2)
@@ -332,16 +361,16 @@ def display_ofat_results(results, parameters=PARAMETERS,
             #     plt.title("{} measure for parameter {}".format(
             #         comparison_method, param_name))
 
+            # plt.legend()
+
             err_min = mean_plot_data[:, j] - min_plot_data[:, j]
             err_max = max_plot_data[:, j] - mean_plot_data[:, j]
             plt.errorbar(np.linspace(*bounds, results.shape[0]),
                          mean_plot_data[:, j], yerr=[err_max, err_min],
                          ls='None', marker='o', ms=4, capsize=3)
 
-            plt.title("{} for parameter {}".format(
-                comparison_method.title().replace("_", " "), param_name))
+            plt.title("{} for parameter {}".format(comparison_method, param_name))
 
-            # plt.legend()
             plt.savefig(os.path.join(
                 RESULTS_PATH,
                 "ofat-measure-{}-parameter-{}-samples-{}-replicates-{}.png".format(
@@ -371,7 +400,7 @@ if __name__ == "__main__":
 
     elif "--sobol-run" in sys.argv:
         print("Starting SOBOL run...\n")
-        results = run_sobol_analysis()
+        results = run_sobol_analysis(fixed_class_size=130)
         with open(sobol_results_path, "wb") as f:
             pickle.dump(results, f)
         print("\nSaved results to {}".format(sobol_results_path))

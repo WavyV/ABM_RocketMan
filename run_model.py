@@ -77,7 +77,10 @@ def get_default_sociability_sequence(class_size):
     file_path = path.join(MODEL_INPUT_PATH, "size_" + str(class_size) + DEFAULT_SOC_SEQ)
     if path.isfile(file_path):
         with open(file_path, 'rb') as f:
-            return pickle.load(f)
+            s = pickle.load(f)
+            #print("sociability sequence properties:")
+            #print("mean: {}".format(np.mean(s)))
+            return s
 
     else:
         sociability_generator = process_form.agent_sociability_gen()
@@ -92,10 +95,15 @@ def generate_sociability_sequence(class_size, distribution, seed=0):
 
     if distribution == "cauchy":
         sociability_sequence = np.random.standard_cauchy(size=class_size)
-    if distribution == "gaussian":
+    elif distribution == "gaussian":
         sociability_sequence = np.random.normal(size=class_size)
-    else:
+    elif distribution == "uniform_aversion":
         sociability_sequence = np.random.uniform(-1,1, size=class_size)
+    elif distribution == "uniform_affection":
+        sociability_sequence = np.random.uniform(-1,1, size=class_size)
+    else:
+        print("Wrong distribution given! Ending program.")
+        quit()
 
     return sociability_sequence
 
@@ -104,7 +112,13 @@ def get_default_degree_sequence(class_size):
     file_path = path.join(MODEL_INPUT_PATH, "size_" + str(class_size) + DEFAULT_DEG_SEQ)
     if path.isfile(file_path):
         with open(file_path, 'rb') as f:
-            return pickle.load(f)
+            s = pickle.load(f)
+            #print("degree sequence properties:")
+            #print("mean: {}".format(np.mean(s)))
+            #print("min: {}".format(np.min(s)))
+            #print("max: {}".format(np.max(s)))
+            #print("len: {}".format(len(s)))
+            return s
 
     else:
         friendship_generator = process_form.agent_friends_gen()
@@ -131,7 +145,8 @@ Returns:
     model: the created model instance
 """
 def init_default_model(coefs, class_size, seed=0, seat_fraction=0.5,
-                       deterministic_choice=True, social_aversion=False):
+                       deterministic_choice=True, social_aversion=False,
+                       scale=True):
 
     # Using the default classroom size of [6,14,0] blocks and 14 rows
 
@@ -154,10 +169,13 @@ def init_default_model(coefs, class_size, seed=0, seat_fraction=0.5,
         #sociability_sequence = generate_sociability_sequence(class_size, "gaussian", seed)
 
         """ use the following line to sample from a cauchy distribution"""
-        sociability_sequence = generate_sociability_sequence(class_size, "cauchy", seed)
+        #sociability_sequence = generate_sociability_sequence(class_size, "cauchy", seed)
 
-        """ use the following line to sample from a uniform distribution"""
-        #sociability_sequence = generate_sociability_sequence(class_size, "uniform", seed)
+        """ use the following line to sample from a uniform distribution in the interval [-1,1]"""
+        #sociability_sequence = generate_sociability_sequence(class_size, "uniform_aversion", seed)
+
+        """ use the following line to sample from a uniform distribution in the interval [0,1]"""
+        sociability_sequence = generate_sociability_sequence(class_size, "uniform_affection", seed)
 
         # scale to range [-1,1]
         sociability_sequence = (((sociability_sequence - np.min(sociability_sequence)) * 2) / (np.max(sociability_sequence - np.min(sociability_sequence)))) - 1
@@ -171,7 +189,8 @@ def init_default_model(coefs, class_size, seed=0, seat_fraction=0.5,
                            sociability_sequence=sociability_sequence,
                            degree_sequence=degree_sequence, seed=seed,
                            seat_fraction=seat_fraction,
-                           deterministic_choice=deterministic_choice)
+                           deterministic_choice=deterministic_choice,
+                           scale=scale)
 
     return model
 

@@ -373,7 +373,6 @@ class ClassroomModel():
                  sociability_sequence=None, social_network=None,
                  degree_sequence=None, seed=0,
                  seat_fraction=0.5, deterministic_choice=True):
-
         self.rand = np.random.RandomState(seed)
         self.classroom = classroom_design
         self.seat_fraction = seat_fraction
@@ -387,7 +386,10 @@ class ClassroomModel():
         self.seats = np.empty((self.classroom.width, self.classroom.num_rows), dtype=Seat)
 
         # assure that the coefficients sum up to one
-        self.coefs = [(c/sum(coefs) if sum(coefs) > 0 else 0) for c in coefs]
+        if scale:
+            self.coefs = [(c/sum(coefs) if sum(coefs) > 0 else 0) for c in coefs]
+        else:
+            self.coefs = coefs
 
         # assure that the probabilities sum up to one
         #self.sociability_distr = [(s/sum(sociability_distr) if sum(sociability_distr) > 0 else 0) for s in sociability_distr]
