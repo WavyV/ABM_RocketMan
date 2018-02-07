@@ -77,7 +77,10 @@ def get_default_sociability_sequence(class_size):
     file_path = path.join(MODEL_INPUT_PATH, "size_" + str(class_size) + DEFAULT_SOC_SEQ)
     if path.isfile(file_path):
         with open(file_path, 'rb') as f:
-            return pickle.load(f)
+            s = pickle.load(f)
+            #print("sociability sequence properties:")
+            #print("mean: {}".format(np.mean(s)))
+            return s
 
     else:
         sociability_generator = process_form.agent_sociability_gen()
@@ -104,7 +107,13 @@ def get_default_degree_sequence(class_size):
     file_path = path.join(MODEL_INPUT_PATH, "size_" + str(class_size) + DEFAULT_DEG_SEQ)
     if path.isfile(file_path):
         with open(file_path, 'rb') as f:
-            return pickle.load(f)
+            s = pickle.load(f)
+            #print("degree sequence properties:")
+            #print("mean: {}".format(np.mean(s)))
+            #print("min: {}".format(np.min(s)))
+            #print("max: {}".format(np.max(s)))
+            #print("len: {}".format(len(s)))
+            return s
 
     else:
         friendship_generator = process_form.agent_friends_gen()

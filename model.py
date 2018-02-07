@@ -397,7 +397,7 @@ class ClassroomModel():
         else:
             self.max_num_agents = len(degree_sequence)
             self.rand.shuffle(degree_sequence)
-            self.social_network = network.walts_graph(degree_sequence, plot=False)[0]
+            self.social_network = network.walts_graph(list(map(int, degree_sequence)), plot=False)[0]
 
         if sociability_sequence is None:
             # default sociability values are sampled uniformly from [0,1]
