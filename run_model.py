@@ -9,7 +9,7 @@ FILE_NAME = "model_data.json"
 NUM_ITERATIONS = 150
 CLASS_SIZE = 150
 # position + friendship + sociability + accessability
-MODEL_COEFS = [[0,0,0,1], [0,0,1,0], [0,1,0,1]]
+MODEL_COEFS = [[0, 0, 0, 1], [0, 0, 1, 0], [0, 1, 0, 1]]
 BINS = [0, 0.1, 0.5]
 
 MODEL_INPUT_PATH = "model_input"
@@ -40,6 +40,7 @@ def get_default_pos_utilities():
             pickle.dump(pos_utilities, f)
         return pos_utilities
 
+
 def get_default_pos_utility_bins():
 
     file_path = path.join(MODEL_INPUT_PATH, DEFAULT_POS_UTIL_BINS)
@@ -53,6 +54,7 @@ def get_default_pos_utility_bins():
             pickle.dump(pos_utilities, f)
         print(pos_utilities)
         return pos_utilities
+
 
 def get_block_pos_utilities():
 
@@ -72,22 +74,24 @@ def get_block_pos_utilities():
 
     return seating_bins.T
 
+
 def get_default_sociability_sequence(class_size):
 
-    file_path = path.join(MODEL_INPUT_PATH, "size_" + str(class_size) + DEFAULT_SOC_SEQ)
+    file_path = path.join(
+        MODEL_INPUT_PATH, "size_" + str(class_size) + DEFAULT_SOC_SEQ)
     if path.isfile(file_path):
         with open(file_path, 'rb') as f:
             s = pickle.load(f)
-            #print("sociability sequence properties:")
-            #print("mean: {}".format(np.mean(s)))
             return s
 
     else:
         sociability_generator = process_form.agent_sociability_gen()
-        sociability_sequence = [next(sociability_generator) for _ in range(class_size)]
+        sociability_sequence = [
+            next(sociability_generator) for _ in range(class_size)]
         with open(file_path, 'wb') as f:
             pickle.dump(sociability_sequence, f)
         return sociability_sequence
+
 
 def generate_sociability_sequence(class_size, distribution, seed=0):
 
@@ -107,22 +111,20 @@ def generate_sociability_sequence(class_size, distribution, seed=0):
 
     return sociability_sequence
 
+
 def get_default_degree_sequence(class_size):
 
-    file_path = path.join(MODEL_INPUT_PATH, "size_" + str(class_size) + DEFAULT_DEG_SEQ)
+    file_path = path.join(
+        MODEL_INPUT_PATH, "size_" + str(class_size) + DEFAULT_DEG_SEQ)
     if path.isfile(file_path):
         with open(file_path, 'rb') as f:
             s = pickle.load(f)
-            #print("degree sequence properties:")
-            #print("mean: {}".format(np.mean(s)))
-            #print("min: {}".format(np.min(s)))
-            #print("max: {}".format(np.max(s)))
-            #print("len: {}".format(len(s)))
             return s
 
     else:
         friendship_generator = process_form.agent_friends_gen()
-        degree_sequence = [next(friendship_generator) for _ in range(class_size)]
+        degree_sequence = [
+            next(friendship_generator) for _ in range(class_size)]
         with open(file_path, 'wb') as f:
             pickle.dump(degree_sequence, f)
         return degree_sequence
@@ -136,10 +138,15 @@ Args:
     class_size: number of students in the class, forming the social network
     seed: for random number generation
     seat_fraction: fraction of available seats to be considered for seat choice
-    deterministic_choice: if True, students always choose one of the seats with highest total utility.
-                        Otherwise, the decision is made probabilisticly, converting seat utilities into probabilities.
-    social_aversion: if True, an artificial sociability sequence is generated that includes negative sociability values representing social aversion.
-                        Otherwise, the sociability sequence derived from the data is used, where sociability values only range from 0 to 1.
+    deterministic_choice: if True, students always choose one of the seats with
+                        highest total utility. Otherwise, the decision is made
+                        probabilisticly, converting seat utilities into
+                        probabilities.
+    social_aversion: if True, an artificial sociability sequence is generated
+                        that includes negative sociability values representing
+                        social aversion. Otherwise, the sociability sequence
+                        derived from the data is used, where sociability values
+                        only range from 0 to 1.
 
 Returns:
     model: the created model instance
@@ -205,12 +212,19 @@ Args:
 
 Returns:
     image: 2D array representing the classroom.
-                - The level of seat blocking is represented by decreasing negative values (the smaller the costlier to reach the seat)
-                - The level of "happiness" of each student is represented by positive values (the larger the happier)
-    info: 3D array comprising the 4 matrices 'seat_utilities', 'student_IDs', 'student_sociabilities' and 'initial_happiness'
+
+                - The level of seat blocking is represented by decreasing
+                  negative values (the smaller the costlier to reach the seat)
+
+
+                - The level of "happiness" of each student is represented by
+                  positive values (the larger the happier)
+
+    info: 3D array comprising the 4 matrices 'seat_utilities', 'student_IDs',
+    'student_sociabilities' and 'initial_happiness'
 """
 def get_model_state(model):
-    image = -0.8*np.ones((model.classroom.num_rows, model.classroom.width))
+    image = -0.8 * np.ones((model.classroom.num_rows, model.classroom.width))
     info = np.zeros((model.classroom.num_rows, model.classroom.width, 4))
 
     for seat in model.seats.flat:
@@ -219,23 +233,22 @@ def get_model_state(model):
 
         x, y = seat.pos
 
-        info[y,x,0] = model.classroom.pos_utilities[x,y]
+        info[y, x, 0] = model.classroom.pos_utilities[x, y]
         if seat.student is None:
             # seat is available. Determine level of accessibility
-            image[y,x] = -2 + seat.accessibility
+            image[y, x] = -2 + seat.accessibility
         else:
             # seat is occupied. Set value based on the student's happiness
-            image[y,x] = 1
-            image[y,x] += seat.get_happiness(seat.student)
+            image[y, x] = 1
+            image[y, x] += seat.get_happiness(seat.student)
 
             # save student's properties
-            info[y,x,1] = seat.student.unique_id
-            info[y,x,2] = seat.student.sociability
-            info[y,x,3] = seat.student.initial_happiness
-
+            info[y, x, 1] = seat.student.unique_id
+            info[y, x, 2] = seat.student.sociability
+            info[y, x, 3] = seat.student.initial_happiness
 
     for pos in model.classroom.entrances:
-        image[pos[1],pos[0]] = -3
+        image[pos[1], pos[0]] = -3
 
     return image, info
 
@@ -245,14 +258,14 @@ def generate_model_names():
     model_names = []
     for m in MODEL_COEFS:
         name = []
-        for i,c in enumerate(m):
-            if i==0 and c>0:
+        for i, c in enumerate(m):
+            if i == 0 and c > 0:
                 name.append("position")
-            if i==1 and c>0:
+            if i == 1 and c > 0:
                 name.append("friendship")
-            if i==2 and c>0:
+            if i == 2 and c > 0:
                 name.append("sociability")
-            if i==3 and c>0:
+            if i == 3 and c > 0:
                 name.append("accessibility")
         model_names.append(" + ".join(name))
     return model_names
@@ -292,16 +305,22 @@ def final_model(model, num_iterations):
 
 if __name__ == "__main__":
 
-    # initialize and run models with given utility coefficients [position, friendship, sociability, accessibility]
+    # Initialize and run models with given utility coefficients [position,
+    # friendship, sociability, accessibility]
     models = []
     for coefs in MODEL_COEFS:
-        """ use the following to simulate the model with probabilistic choice among the best seat_fraction percent """
-        #models.append(init_default_model(coefs, CLASS_SIZE, seat_fraction=0.1, deterministic_choice=False))
+        # Use the following to simulate the model with probabilistic choice
+        # among the best seat_fraction percent
 
-        """ use the following to simulate the model with deterministic choice of the highest rated seat """
-        models.append(init_default_model(coefs, CLASS_SIZE, deterministic_choice=True, social_aversion=True))
+        # models.append(init_default_model(coefs, CLASS_SIZE, seat_fraction=0.1, deterministic_choice=False))
+
+        # Use the following to simulate the model with deterministic choice of
+        # the highest rated seat
+        models.append(init_default_model(
+            coefs, CLASS_SIZE, deterministic_choice=True, social_aversion=True))
 
     try:
-        generate_data(models, NUM_ITERATIONS, path.join(MODEL_DATA_PATH, sys.argv[1]))
+        generate_data(
+            models, NUM_ITERATIONS, path.join(MODEL_DATA_PATH, sys.argv[1]))
     except:
         generate_data(models, NUM_ITERATIONS)
