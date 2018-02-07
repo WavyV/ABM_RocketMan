@@ -136,26 +136,19 @@ def get_entropy(model_state):
 
     return entropies
 
-def get_average_dist_to_aisles(model_state, aisles):
 
-    np.insert(model_state, aisles, 0, axis=1)
+"""
+Insert aisles (represented by the given 'value') into the model_state.
+"""
+def insert_aisles(model_state, aisles, value):
 
-    for x in model_state.shape[0]:
-        for y in model_state.shape[1]:
-
-        if x < aisles[0]:
-            # then no aisle to the left
-            dist_left = np.infty
+    for a in aisles:
+        if a < model_state.shape[1]:
+            model_state = np.insert(model_state, a, value, axis=1)
         else:
-            left_aisle = max([a for a in aisles if a < x])
-            self.row_left = [(i, y) for i in range(left_aisle+1, x)]
+            model_state = np.concatenate((model_state, value*np.ones((model_state.shape[0],1))), axis=1)
+    return model_state
 
-        if x > aisles[-1]:
-            # then no aisle to the right
-            dist_right = np.infty
-        else:
-            right_aisle = min([a for a in model.classroom.aisles_x if a > x])
-            self.row_right = [(i, y) for i in range(x+1, right_aisle)]
 
 
 """
