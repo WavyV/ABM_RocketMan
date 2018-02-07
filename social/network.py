@@ -51,7 +51,7 @@ def barabasi_albert(n, m, plot = False):
     c = nx.to_numpy_matrix(G)
     return c, G
 
-def walts_graph(degree_sequence, plot):
+def walts_graph(degree_sequence, plot = False):
     # The value at index i of this array indicates how many connections agent i can still make. Ideally, when the network has been
     # made this array contains only zeros again. Most likely there will be some mismatch due to people inconsistent number of friends
     available_connections = degree_sequence
