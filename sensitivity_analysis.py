@@ -358,17 +358,6 @@ def display_ofat_results(results, parameters=PARAMETERS,
             print("variance: {} measure, parameter {}:\n\t{}".format(
                 comparison_method, param_name, var_plot_data[:, j]))
 
-            # for label, plot_data in zip(
-            #         ["min", "max", "mean"],
-            #         [min_plot_data, max_plot_data, mean_plot_data]):
-            #     plt.scatter(np.linspace(*bounds, results.shape[0]),
-            #                 plot_data[:, j],
-            #                 label=label)
-            #     plt.title("{} measure for parameter {}".format(
-            #         comparison_method, param_name))
-
-            # plt.legend()
-
             err_min = mean_plot_data[:, j] - min_plot_data[:, j]
             err_max = max_plot_data[:, j] - mean_plot_data[:, j]
             x_axis = np.linspace(*bounds, results.shape[0])

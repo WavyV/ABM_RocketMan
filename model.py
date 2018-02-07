@@ -39,10 +39,10 @@ class Student():
         self.seated = False
         self.initial_happiness = 0
 
-        """ currently not used """
+        # Currently not used, but here incase of future study
         self.will_to_change_seat = False
         self.moving_threshold = 1
-        self.moving_prob = 0.2
+        self.moving_prob = 0.05
 
 
 
@@ -91,15 +91,14 @@ class Student():
                             # convert utilities into probabilities and choose seat based on the resulting probability distribution
                                 utility_subset = [s/sum_utilities for s in utility_subset]
                                 seat_choice = self.model.rand.choice(seat_subset, p=utility_subset)
-                                # print("chosen utility: " + str(seat_choice.get_total_utility(self)))
-                                # print("max utility: " + str(max(utility_subset)*sum_utilities))
 
                             else:
                                 # if all utilities are zero, choose the seat randomly
                                 seat_choice = self.model.rand.choice(seat_options)
 
                     else:
-                        """ only used if 'will_to_change_seat' is enabled """
+                        # only happens if 'will_to_change_seat' is enabled!
+
                         # pick seat with highest utiltiy (if multiple seats are optimal, choose one of them randomly)
                         # include cost to get away from the old seat
                         seat_utilities = [seat.get_total_utility(self) - old_seat.get_stand_up_cost() for seat in seat_options]
@@ -135,13 +134,10 @@ class Student():
             self.model.empty_seats.remove(seat_choice)
 
 
-
-
     """
     At each tick the student either selects a seat or stays at its current seat
     """
     def step(self):
-
         # only choose another seat if not seated yet or
         # if the student has the characteristic to change its seat again
         if not self.seated:
@@ -177,6 +173,8 @@ class Seat():
         self.pos = pos
 
         x, y = pos
+
+        # find the distances to the left and right aisles, for accessibility
         if x < model.classroom.aisles_x[0]:
             # then no aisle to the left
             self.row_left = None
@@ -198,9 +196,7 @@ class Seat():
         pos_utility: utility in range [0,1]
     """
     def get_position_utility(self):
-
-        pos_utility = self.model.classroom.pos_utilities[self.pos]
-        return pos_utility
+        return self.model.classroom.pos_utilities[self.pos]
 
     """
     Get the accessibility of the seat based on the number of Students between the seat and the aisle.
@@ -248,7 +244,7 @@ class Seat():
 
         x, y = self.pos
 
-        # assure that size_x and size_y are uneven, so that the neighborhood has one central seat
+        # assure that size_x and size_y are odd, so that the neighborhood has one central seat
         if size_x%2 == 0:
             size_x -= 1
         if size_y%2 == 0:
@@ -274,6 +270,7 @@ class Seat():
                         continue
 
         return neighborhood
+
 
     """
     Get the social utility of the Seat (including both friendship and sociability component).
@@ -301,9 +298,8 @@ class Seat():
         for x in range(interaction_x):
             for y in range(interaction_y):
 
-                if neighborhood[x,y] >= 0: # if there is a student
-                    # compute the friendship component
-
+                # if there is a student check friendship
+                if neighborhood[x,y] >= 0:
                     friendship = self.model.social_network[int(student.unique_id), int(neighborhood[x,y])]
 
                     u_friendship += self.model.friendship_interaction_matrix[x, y] * friendship
@@ -372,15 +368,15 @@ class ClassroomModel():
     def __init__(self, classroom_design, coefs=[0.25, 0.25, 0.25, 0.25],
                  sociability_sequence=None, social_network=None,
                  degree_sequence=None, seed=0,
-                 seat_fraction=0.5, deterministic_choice=True):
+                 seat_fraction=0.5, deterministic_choice=True, scale=True):
         self.rand = np.random.RandomState(seed)
         self.classroom = classroom_design
         self.seat_fraction = seat_fraction
         self.deterministic_choice = deterministic_choice
         self.empty_seats = []
         self.students = []
-        self.model_states = []
-        self.im = None
+        self.model_states = []   # all simulated model states stored here
+        self.im = None   # used to store the current image
 
         # referenced as x, y (i.e. column then row!)
         self.seats = np.empty((self.classroom.width, self.classroom.num_rows), dtype=Seat)
@@ -391,12 +387,10 @@ class ClassroomModel():
         else:
             self.coefs = coefs
 
-        # assure that the probabilities sum up to one
-        #self.sociability_distr = [(s/sum(sociability_distr) if sum(sociability_distr) > 0 else 0) for s in sociability_distr]
-
-        # if all utility components are set to zero, seat choices are completely random.
+        # if all utility components are set to zero, seat choices are completely random
         self.random_seat_choice = np.all(coefs == 0)
 
+        # setup the social network
         if social_network is not None:
             self.social_network = social_network
             self.max_num_agents = social_network.shape[0]
@@ -410,6 +404,7 @@ class ClassroomModel():
                 self.rand.shuffle(degree_sequence)
                 self.social_network = network.walts_graph(degree_sequence, plot=False)[0]
 
+        # set up the sociabilities of the students
         if sociability_sequence is None:
             # default sociability values are sampled uniformly from [0,1]
             self.sociability_sequence = deque([self.rand.uniform(0, 1) for _ in range(self.max_num_agents)])
@@ -426,9 +421,7 @@ class ClassroomModel():
         # They need to have the same shape.
         # Values should sum up to one so that the resulting friendship and sociability terms are within range [0,1].
         self.friendship_interaction_matrix = np.array([[0.5, 0, 0.5]]).T
-        # self.friendship_interaction_matrix = np.array([[0, 0, 0], [0.5, 0, 0.5], [0, 0, 0]]).T
         self.sociability_interaction_matrix = np.array([[0.5, 0, 0.5]]).T
-        # self.sociability_interaction_matrix = np.array([[0, 0, 0], [0.5, 0, 0.5], [0, 0, 0]]).T
 
         # initialize seats (leave aisles free)
         for x in range(self.classroom.width):
@@ -545,6 +538,7 @@ class ClassroomModel():
         model_state = np.delete(model_state, self.classroom.aisles_y, axis=1)
         return model_state
 
+
     """
     Using matplotlib to draw the current state of the model.
 
@@ -622,8 +616,6 @@ class ClassroomModel():
         fig.tight_layout(rect=[0, 0.2, 1, 1])
 
 
-
-
 class ClassroomDesign():
 
     """
@@ -658,7 +650,7 @@ class ClassroomDesign():
 
         # define entrances
         if entrances is None:
-            # default: one entrance in the front right corner
+            # default: two entrances at the front corners
             self.entrances = [((0, 0)),((self.width-1,0))]
         else:
             self.entrances = entrances
