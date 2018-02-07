@@ -28,7 +28,7 @@ class Student():
     Args:
         unique_id: student identifier
         model: the associated ClassroomModel
-        sociability: will to sit next to unknown people (-1: unsociable, 0: indifferent, 1: sociable)
+        sociability: willingness to sit next to unknown people (-1: unsociable, 0: indifferent, 1: sociable)
     """
     def __init__(self, unique_id, model, sociability=0):
         self.model = model
@@ -91,13 +91,12 @@ class Student():
                             # convert utilities into probabilities and choose seat based on the resulting probability distribution
                                 utility_subset = [s/sum_utilities for s in utility_subset]
                                 seat_choice = self.model.rand.choice(seat_subset, p=utility_subset)
-                                print("chosen utility: " + str(seat_choice.get_total_utility(self)))
-                                print("max utility: " + str(max(utility_subset)*sum_utilities))
+                                # print("chosen utility: " + str(seat_choice.get_total_utility(self)))
+                                # print("max utility: " + str(max(utility_subset)*sum_utilities))
 
                             else:
                                 # if all utilities are zero, choose the seat randomly
                                 seat_choice = self.model.rand.choice(seat_options)
-                                print("random choice")
 
                     else:
                         """ only used if 'will_to_change_seat' is enabled """
@@ -381,6 +380,8 @@ class ClassroomModel():
         self.deterministic_choice = deterministic_choice
         self.empty_seats = []
         self.students = []
+        self.model_states = []
+        self.im = None
 
         # referenced as x, y (i.e. column then row!)
         self.seats = np.empty((self.classroom.width, self.classroom.num_rows), dtype=Seat)
@@ -437,27 +438,28 @@ class ClassroomModel():
                         self.empty_seats.append(seat)
                         self.seats[x, y] = seat
 
-
+        self.model_states.append(self.get_model_state())
 
     """
     Advance the model by one step. If the maximum student number is not reached yet, create a new student every tick.
     """
     def step(self):
-
         # as long as the max number of students is not reached, add a new one
         n = len(self.students)
         if n < self.max_num_agents:
             # create student
-            if self.coefs[2] != 0:
-                # pick next sample from the sociability sequence
+            try:
                 sociability = self.sociability_sequence.popleft()
-                student = Student(n, self, sociability)
-            else:
-                student = Student(n, self)
+            except:
+                sociability = 0
+
+            student = Student(n, self, sociability)
 
             # add student and update
             self.students.append(student)
             student.step()
+
+            self.model_states.append(self.get_model_state())
 
 
     """
@@ -475,6 +477,41 @@ class ClassroomModel():
 
             # place new student at the predetermined seat
             student.choose_seat(seat_pos)
+
+    """
+    Returns the current model state, with information about each seat and
+    student
+    """
+    def get_model_state(self):
+        image = -0.8*np.ones((self.classroom.num_rows, self.classroom.width))
+        info = np.zeros((self.classroom.num_rows, self.classroom.width, 4))
+
+        for seat in self.seats.flat:
+            if type(seat) != Seat:
+                continue
+
+            x, y = seat.pos
+
+            info[y,x,0] = self.classroom.pos_utilities[x,y]
+            if seat.student is None:
+                # seat is available. Determine level of accessibility
+                image[y,x] = -2 + seat.accessibility
+            else:
+                # seat is occupied. Set value based on the student's happiness
+                image[y,x] = 1
+                image[y,x] += seat.get_happiness(seat.student)
+
+                # save student's properties
+                info[y,x,1] = seat.student.unique_id
+                info[y,x,2] = seat.student.sociability
+                info[y,x,3] = seat.student.initial_happiness
+
+
+        for pos in self.classroom.entrances:
+            image[pos[1],pos[0]] = -3
+
+        return (image, info)
+
 
     """
     Get the current seating distribution in the classroom. Ones represent students, zeros represent available seats.
@@ -507,39 +544,31 @@ class ClassroomModel():
         return model_state
 
     """
-    Using matplotlib to draw the current state of the model. Returns the figure
+    Using matplotlib to draw the current state of the model.
+
+    Args:
+        fig: the pyplot figure.
+        ax: the axes to draw the plot.
+        interactive: whether to handle mouse events.
+        state: which model state to use. -1 can be used to show last state.
     """
-    def plot(self, fig, ax, interactive=False):
-        image = -0.8*np.ones((self.classroom.num_rows, self.classroom.width))
-        info = np.zeros((self.classroom.num_rows, self.classroom.width, 4))
+    def plot(self, fig, ax, interactive=False, state=-1):
+        try:
+            image, info = self.model_states[state]
+        except:
+            image, info = self.get_model_state()
 
-        for seat in self.seats.flat:
-            if type(seat) != Seat:
-                continue
+        ax.clear()
 
-            x, y = seat.pos
+        self.im = ax.imshow(image, vmin=-2, vmax=2, cmap='RdYlGn', interpolation=None)
 
-            info[y,x,0] = self.classroom.pos_utilities[x,y]
-            if seat.student is None:
-                # seat is available. Determine level of accessibility
-                image[y,x] = -2 + seat.accessibility
-            else:
-                # seat is occupied. Set value based on the student's happiness
-                image[y,x] = 1
-                image[y,x] += seat.get_happiness(seat.student)
-
-                # save student's properties
-                info[y,x,1] = seat.student.unique_id
-                info[y,x,2] = seat.student.sociability
-                info[y,x,3] = seat.student.initial_happiness
-
-
-        for pos in self.classroom.entrances:
-            image[pos[1],pos[0]] = -3
-
-        im = ax.imshow(image, vmin=-2, vmax=2, cmap='RdYlGn', interpolation=None)
         ax.axis('off')
-        ax.set_title('Classroom State ({} students)'.format(len(self.students)))
+
+        if state < 0:
+            num_students = len(self.students) + state + 1
+        else:
+            num_students = min(state, len(self.students))
+        ax.set_title('Classroom State ({} students)'.format(num_students))
 
         helper = ax.annotate("", xy=(0.5, 0), xycoords="axes fraction",
                              va="bottom", ha="center")
@@ -553,7 +582,7 @@ class ClassroomModel():
         def hover(event):
             if(event.inaxes):
                 x, y = int(np.round(event.xdata)), int(np.round(event.ydata))
-                value = im.get_array()[y][x]
+                value = self.im.get_array()[y][x]
                 seat_utility, student_id, sociability, initial_happiness = (
                     info[y, x])
 
@@ -566,9 +595,9 @@ class ClassroomModel():
                     text = "EMPTY SEAT\nSeat attractivness: {:.2f}\nAccessibility: {:.2f}".format(
                         seat_utility, value + 2)
                 elif value >= 0:
-                    text = "FILLED SEAT\n {} {:.2f} \n {} {} \n {} {:.2f} \n {} {:.2f}".format(
+                    text = "FILLED SEAT\n {} {:.2f} \n {} {:.2f} \n {} {:.2f} \n {} {:.2f}".format(
                         "Seat attractivness:", seat_utility,
-                        "Student sociability:", int(sociability),
+                        "Student sociability:", sociability,
                         "Initial happiness (t = {}):".format(int(student_id)),
                         initial_happiness, "Current happiness:", value - 1)
 
@@ -581,11 +610,14 @@ class ClassroomModel():
                 a.set_visible(False)
                 fig.canvas.draw_idle()
 
+        ax.set_xticks(np.arange(-0.5, image.shape[1]), minor=True)
+        ax.set_yticks(np.arange(-0.5, image.shape[0]), minor=True)
+        ax.grid(which='minor', color='k', linestyle='-', linewidth=2)
+
         if interactive:
             cid = fig.canvas.mpl_connect('motion_notify_event', hover)
 
         fig.tight_layout(rect=[0, 0.2, 1, 1])
-        plt.show()
 
 
 
