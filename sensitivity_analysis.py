@@ -73,10 +73,10 @@ PARAMETERS = {
     # position, friendship, sociability, accessibility
     "names": ["β3", "β1", "β2", "β4", "N"],
     "bounds": [
-        [0, 0.25],
-        [0, 0.25],
-        [0, 0.25],
-        [0, 0.25],
+        [0, 1],
+        [0, 1],
+        [0, 1],
+        [0, 1],
         [1, MAX_STUDENTS],
     ],
     # Not used by Sobol, but by OFAT.
