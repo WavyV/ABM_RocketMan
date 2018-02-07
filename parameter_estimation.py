@@ -198,19 +198,20 @@ if __name__ == "__main__":
                 target_output = TARGET_OUTPUTS[i]
                 class_size = int(np.sum(target_output))
                 # run model
-                model = run_model.init_default_model(final_coefs, class_size, seed=0)
+                model = run_model.init_default_model(final_coefs, class_size, seed=123)
                 for n in range(class_size):
                     model.step()
                 model_output = model.get_binary_model_state()
+                aisles_x = model.classroom.aisles_x
 
                 # plot model output and target output
-                fig, (ax1, ax2) = plt.subplots(1,2)
+                fig1, ax1 = plt.subplots(1)
+                fig2, ax2 = plt.subplots(1)
                 ax1.axis("off")
                 ax2.axis("off")
-                im_model = ax1.imshow(model_output, cmap="gray", interpolation=None)
-                im_data = ax2.imshow(target_output, cmap="gray", interpolation=None)
-                fig_name = file_path.split('.')[0] + "_" + DATA[i].split('.')[0]
-                fig.savefig(path.join(MODEL_DATA_PATH, fig_name), bbox_inches='tight')
-
-                print("model center of mass: {}".format(ndimage.measurements.center_of_mass(model_output)))
-                print("data center of mass: {}".format(ndimage.measurements.center_of_mass(target_output)))
+                im_model = ax1.imshow(model_comparison.insert_aisles(model_output,aisles_x,2), cmap="gray", interpolation=None)
+                im_data = ax2.imshow(model_comparison.insert_aisles(target_output,aisles_x,2), cmap="gray", interpolation=None)
+                fig_name_1 = file_path.split('.')[0] + "_" + DATA[i].split('.')[0]
+                fig_name_2 = file_path.split('.')[0] + "_" + DATA[i].split('.')[0] + "_data"
+                fig1.savefig(path.join(MODEL_DATA_PATH, fig_name_1), bbox_inches='tight')
+                fig2.savefig(path.join(MODEL_DATA_PATH, fig_name_2), bbox_inches='tight')
