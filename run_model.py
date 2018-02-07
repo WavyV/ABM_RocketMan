@@ -131,7 +131,8 @@ Returns:
     model: the created model instance
 """
 def init_default_model(coefs, class_size, seed=0, seat_fraction=0.5,
-                       deterministic_choice=True, social_aversion=False):
+                       deterministic_choice=True, social_aversion=False,
+                       scale=True):
 
     # Using the default classroom size of [6,14,0] blocks and 14 rows
 
@@ -171,7 +172,8 @@ def init_default_model(coefs, class_size, seed=0, seat_fraction=0.5,
                            sociability_sequence=sociability_sequence,
                            degree_sequence=degree_sequence, seed=seed,
                            seat_fraction=seat_fraction,
-                           deterministic_choice=deterministic_choice)
+                           deterministic_choice=deterministic_choice,
+                           scale=scale)
 
     return model
 
