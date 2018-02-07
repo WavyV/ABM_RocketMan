@@ -336,6 +336,12 @@ def display_ofat_results(results, parameters=PARAMETERS,
     """
     for k, comparison_method in enumerate(comparison_methods):
 
+        # Nice comparison method title for the plots.
+        if comparison_method == "rl_long_run_emphasis":
+            comparison_method = "RL: long-run-emphasis"
+        else:
+            comparison_method = comparison_method.title().replace("_", " ")
+
         min_plot_data = ofat_single_comparison_results(results, k, 0)
         max_plot_data = ofat_single_comparison_results(results, k, 1)
         mean_plot_data = ofat_single_comparison_results(results, k, 2)
@@ -363,8 +369,7 @@ def display_ofat_results(results, parameters=PARAMETERS,
                          mean_plot_data[:, j], yerr=[err_max, err_min],
                          ls='None', marker='o', ms=4, capsize=3)
 
-            plt.title("{} for parameter {}".format(
-                comparison_method.title().replace("_", " "), param_name))
+            plt.title("{} for parameter {}".format(comparison_method, param_name))
 
             plt.savefig(os.path.join(
                 RESULTS_PATH,
