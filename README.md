@@ -1,8 +1,11 @@
 # The Classroom Model
 In this project an Agent-Based Model (ABM) of the seating process in classrooms is implemented.
 
-## Overleaf LaTeX Report Link: 
-https://www.overleaf.com/13250817fxtnzrkyyrjf
+An in-depth description of the model's design and analysis can be found in the paper *An Agent-Based Model of Classroom Seating Behaviour* which can be found in this repository.
+
+An introductory tutorial on how to use the model can be found in the interactive *Classroom Model Tutorial* jupyter notebook, also found in this repository.
+
+A briew over of the model's code is described below.
 
 ## Structure
 
@@ -94,9 +97,15 @@ Each seat object has the following characteristics which may change during a sim
 
 ### How to Run Simulations
 
+#### Tutorial Notebook
+
+Within this repository you will find an interactive jupyter notebook detailing how to setup and run a basic simulation. It is recommended that this is read first to gain a clear understanding on the basic functions of the model. It does not however go into detail on how to perform sensitvity analysis or parameter estimation. However, this is documented within the docstrings of the respective Python code, and in the above command.
+
 #### Advance the Model Step by Step and Analyse or Process the Model States
 
-In general, use the ClassroomModel() constructor to create a model with the desired properties. Then the model can be advanced using ``model.step()``. At any step the current seating pattern (``model.get_binary_model_state()``) can be analysed with the tools in ``model_comparison.py``. The complete classroom state (including aisles, utilities, etc.) can be obtained by the ``get_model_state(model)`` method in ``run_model.py``.
+In general, use the ClassroomModel() constructor to create a model with the desired properties. Then the model can be advanced using ``model.step()``. At any step the current seating pattern ``model.get_binary_model_state()`` can be analysed with the tools in ``model_comparison.py``. The complete classroom state (including aisles, utilities, etc.) can be obtained by using ``model.get_model_state()``. A list of model states for each time step `t` of a completed simulation can be accessed via ``model.model_states[t]``.
+
+To plot a model state (in a jupyter notebook for example) simply call ``model.plot(fig, ax, state, interactive)``, with a `matplotlib` figure and axes, the time state you desire (-1 can be used to access the last state), and if you would like to have interactivity (boolean value, see tutorial notebook).
 
 #### Animation of the Simulated Seating Process
 
