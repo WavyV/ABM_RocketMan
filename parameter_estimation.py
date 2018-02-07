@@ -10,7 +10,7 @@ import time
 from os import path
 import json
 import sys
-from scipy import stats
+from scipy import stats, ndimage
 import matplotlib.pyplot as plt
 
 MODEL_DATA_PATH = "model_output/parameter_estimation"
@@ -211,3 +211,6 @@ if __name__ == "__main__":
                 im_data = ax2.imshow(target_output, cmap="gray", interpolation=None)
                 fig_name = file_path.split('.')[0] + "_" + DATA[i].split('.')[0]
                 fig.savefig(path.join(MODEL_DATA_PATH, fig_name), bbox_inches='tight')
+
+                print("model center of mass: {}".format(ndimage.measurements.center_of_mass(model_output)))
+                print("data center of mass: {}".format(ndimage.measurements.center_of_mass(target_output)))
