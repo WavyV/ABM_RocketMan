@@ -372,7 +372,7 @@ class ClassroomModel():
     def __init__(self, classroom_design, coefs=[0.25, 0.25, 0.25, 0.25],
                  sociability_sequence=None, social_network=None,
                  degree_sequence=None, seed=0,
-                 seat_fraction=0.5, deterministic_choice=True):
+                 seat_fraction=0.5, deterministic_choice=True, scale=True):
         self.rand = np.random.RandomState(seed)
         self.classroom = classroom_design
         self.seat_fraction = seat_fraction
