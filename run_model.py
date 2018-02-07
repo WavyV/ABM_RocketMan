@@ -95,10 +95,15 @@ def generate_sociability_sequence(class_size, distribution, seed=0):
 
     if distribution == "cauchy":
         sociability_sequence = np.random.standard_cauchy(size=class_size)
-    if distribution == "gaussian":
+    elif distribution == "gaussian":
         sociability_sequence = np.random.normal(size=class_size)
-    else:
+    elif distribution == "uniform_aversion":
         sociability_sequence = np.random.uniform(-1,1, size=class_size)
+    elif distribution == "uniform_affection":
+        sociability_sequence = np.random.uniform(-1,1, size=class_size)
+    else:
+        print("Wrong distribution given! Ending program.")
+        quit()
 
     return sociability_sequence
 
@@ -164,10 +169,13 @@ def init_default_model(coefs, class_size, seed=0, seat_fraction=0.5,
         #sociability_sequence = generate_sociability_sequence(class_size, "gaussian", seed)
 
         """ use the following line to sample from a cauchy distribution"""
-        sociability_sequence = generate_sociability_sequence(class_size, "cauchy", seed)
+        #sociability_sequence = generate_sociability_sequence(class_size, "cauchy", seed)
 
-        """ use the following line to sample from a uniform distribution"""
-        #sociability_sequence = generate_sociability_sequence(class_size, "uniform", seed)
+        """ use the following line to sample from a uniform distribution in the interval [-1,1]"""
+        #sociability_sequence = generate_sociability_sequence(class_size, "uniform_aversion", seed)
+
+        """ use the following line to sample from a uniform distribution in the interval [0,1]"""
+        sociability_sequence = generate_sociability_sequence(class_size, "uniform_affection", seed)
 
         # scale to range [-1,1]
         sociability_sequence = (((sociability_sequence - np.min(sociability_sequence)) * 2) / (np.max(sociability_sequence - np.min(sociability_sequence)))) - 1
