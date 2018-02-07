@@ -1,1 +1,0 @@
-from mesa import Agent
