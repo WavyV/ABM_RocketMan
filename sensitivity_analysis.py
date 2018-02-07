@@ -37,6 +37,7 @@ RUNS_PER_SAMPLE = 10  # Amount of replicates per run.
 SAMPLES_PER_PARAM = 15  # Points on the interval per parameter.
 OFAT_RESULTS_FILENAME = "_ofat-runs-{}-samples-{}.pickle".format(
     RUNS_PER_SAMPLE, SAMPLES_PER_PARAM)
+OFAT_SCALE_COEFS = False
 
 # Sobol parameters
 SOBOL_SAMPLES = 2000  # Total Saltelli samples: `SOBOL_SAMPLES` * 12
@@ -63,7 +64,8 @@ COMPARISONS = collections.OrderedDict({
 })
 
 # Iterations to run each model for.
-MODEL_ITERATIONS = 240
+MAX_STUDENTS = 260
+MODEL_ITERATIONS = MAX_STUDENTS
 
 # Parameters in the funky format that SALib expects.
 # These parameters are used by both OFAT and Sobol.
@@ -75,10 +77,10 @@ PARAMETERS = {
         [0, 1],
         [0, 1],
         [0, 1],
-        [1, 240],
+        [1, MAX_STUDENTS],
     ],
     # Not used by Sobol, but by OFAT.
-    "_defaults": [0.25, 0.25, 0.25, 0.25, 120]
+    "_defaults": [0.25, 0.25, 0.25, 0.25, MAX_STUDENTS / 2]
 }
 
 # Path to where OFAT and SOBOL results are saved.
@@ -86,7 +88,7 @@ RESULTS_PATH = "./sensitivity-analysis-data"
 
 
 def run(b1, b2, b3, b4, class_size, model_iterations, comparison_methods,
-        fixed_class_size=None):
+        fixed_class_size=None, scale=True):
     """
     Run the model with given class size and beta coefficients.
     Return a list containing a result for each given comparison method.
@@ -105,7 +107,7 @@ def run(b1, b2, b3, b4, class_size, model_iterations, comparison_methods,
     coefficients = [b1, b2, b3, b4]
 
     # Setup initial model and run it.
-    model = run_model.init_default_model(coefficients, class_size)
+    model = run_model.init_default_model(coefficients, class_size, scale=scale)
     final_model = run_model.final_model(model, model_iterations)
 
     # Collect comparison measures and return them.
@@ -177,9 +179,7 @@ def display_sobol_results(results, parameters=PARAMETERS,
         #  Reorder results so coefficients are in correct naming order.
         new_order = [2, 0, 1, 3, 4]
         copy = c.deepcopy(x)
-        print("copy: {}".format(copy))
         for old_i, new_i in enumerate(new_order):
-            print("old i {} new i {}".format(old_i, new_i))
             x[new_i] = copy[old_i]
 
     _names = parameters["names"]
@@ -281,7 +281,8 @@ def run_ofat_analysis(parameters=PARAMETERS,
                 measures = run(
                     *sample_params,
                     model_iterations=model_iterations,
-                    comparison_methods=comparison_methods)
+                    comparison_methods=comparison_methods,
+                    scale=OFAT_SCALE_COEFS)
                 sample_measures.append(measures)
                 run_count += 1
                 print("\nRun: {}\nparameters: {}\nmeasures: {}".format(
@@ -394,7 +395,7 @@ if __name__ == "__main__":
 
     elif "--sobol-run" in sys.argv:
         print("Starting SOBOL run...\n")
-        results = run_sobol_analysis()
+        results = run_sobol_analysis(fixed_class_size=130)
         with open(sobol_results_path, "wb") as f:
             pickle.dump(results, f)
         print("\nSaved results to {}".format(sobol_results_path))
