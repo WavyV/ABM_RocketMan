@@ -22,7 +22,26 @@ A brief overview of the model's code is described below.
 
 ## A Few Quick Commands
 
-NOTE: before running any commands: `pip3 install -r requirements.txt`.
+### Dependencies
+
+Optionally activate a virtual environment to avoid global installs:
+
+```
+python3 -m venv venv
+. venv/bin/activate
+```
+
+To install all dependencies: 
+
+```
+pip3 install -r requirements.txt
+```
+
+To deactivate the virtual environment when done, run `deactivate`.
+
+### Commands
+
+`python3 animation.py` to run the interactive model, see interaction commands below.
 
 `python3 animation.py` to run the interactive model, see interaction commands below.
 
