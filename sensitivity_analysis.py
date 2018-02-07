@@ -213,7 +213,7 @@ def display_sobol_results(results, parameters=PARAMETERS,
             ax.set_yticklabels(_names)
             plt.title("{} order sensitivity of {}".format(
                 order, comparison_method).title().replace("_", " "))
-            ax.set_xlim([-0.1, 1.1])
+            ax.set_xlim([-0.1, 0.7])
 
             plt.errorbar(_sensitivity,
                          range(num_params - 1) if FIXED_N else range(num_params),
