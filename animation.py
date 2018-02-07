@@ -20,9 +20,12 @@ FILE_NAME = "model_data.json"
 try:
     with open(path.join(MODEL_DATA_PATH, sys.argv[1]), "rb") as f:
         MODEL_COEFS, MODEL_NAMES, ALL_MODEL_STATES = pickle.load(f)
+    print("animate: " + str(sys.argv[1]))
 except (FileNotFoundError, IndexError):
     with open(path.join(MODEL_DATA_PATH, FILE_NAME), "rb") as f:
         MODEL_COEFS, MODEL_NAMES, ALL_MODEL_STATES = pickle.load(f)
+    print("Warning: Animation file does not exist or is not given! Using system default.")
+    print("animate: " + str(FILE_NAME))
 
 
 def hover(fig, images, annotes, model_data, event):
